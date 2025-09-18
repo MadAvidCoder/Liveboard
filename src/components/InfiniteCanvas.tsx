@@ -16,6 +16,12 @@ const InfiniteCanvas: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
   const lastPanPos = useRef({ x: 0, y: 0 });
 
+  // --- FIX: always use getRelativePointerPosition for drawing points! ---
+  const getRelativePointer = () => {
+    const stage = stageRef.current;
+    return stage.getRelativePointerPosition();
+  };
+
   const handleMouseDown = (e: any) => {
     if (
       e.evt.button === 2 ||
@@ -25,64 +31,66 @@ const InfiniteCanvas: React.FC = () => {
       e.evt.shiftKey
     ) {
       setIsPanning(true);
+      // For panning, still use screen coordinates
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
     isDrawing.current = true;
-    const pos = stageRef.current.getPointerPosition();
+    const pos = getRelativePointer();
     setLines([...lines, { points: [pos.x, pos.y] }]);
   };
 
   const handleMouseMove = (e: any) => {
     if (isPanning) {
-      const pointer = { x: e.evt.clientX, y: e.evt.clientY };
+      // For pan, use screen deltas and divide by scale
+      const dx = (e.evt.clientX - lastPanPos.current.x) / stageScale;
+      const dy = (e.evt.clientY - lastPanPos.current.y) / stageScale;
       setStagePos((pos) => ({
-        x: pos.x + (pointer.x - lastPanPos.current.x),
-        y: pos.y + (pointer.y - lastPanPos.current.y)
+        x: pos.x + dx,
+        y: pos.y + dy,
       }));
-      lastPanPos.current = pointer;
+      lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
 
     if (!isDrawing.current) return;
-    const stage = stageRef.current;
-    const point = stage.getPointerPosition();
+    const pos = getRelativePointer();
     let lastLine = lines[lines.length - 1];
     if (!lastLine) return;
 
     lastLine = {
       ...lastLine,
-      points: lastLine.points.concat([point.x, point.y])
+      points: lastLine.points.concat([pos.x, pos.y])
     };
     const newLines = [...lines.slice(0, -1), lastLine];
     setLines(newLines);
   };
 
-  const handleMouseUp = (e: any) => {
+  const handleMouseUp = () => {
     isDrawing.current = false;
     setIsPanning(false);
   };
 
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
-    const scaleBy = 1.05;
+    const stage = stageRef.current;
     const oldScale = stageScale;
+    const scaleBy = 1.05;
+    const pointer = stage.getPointerPosition();
+
+    const direction = e.evt.deltaY > 0 ? 1 : -1;
+    const newScale = direction > 0 ? oldScale / scaleBy : oldScale * scaleBy;
+
+    // Calculate mouse point relative to stage before scaling (screen -> stage transform)
     const mousePointTo = {
-      x:
-        (e.evt.x - stagePos.x) /
-        oldScale,
-      y:
-        (e.evt.y - stagePos.y) /
-        oldScale
+      x: (pointer.x - stagePos.x) / oldScale,
+      y: (pointer.y - stagePos.y) / oldScale
     };
 
-    const newScale =
-      e.evt.deltaY > 0 ? oldScale / scaleBy : oldScale * scaleBy;
     setStageScale(newScale);
-
     setStagePos({
-      x: e.evt.x - mousePointTo.x * newScale,
-      y: e.evt.y - mousePointTo.y * newScale
+      x: pointer.x - mousePointTo.x * newScale,
+      y: pointer.y - mousePointTo.y * newScale
     });
   };
 
