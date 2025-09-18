@@ -1,7 +1,12 @@
 import React, { useRef, useState } from "react";
 import { Stage, Layer, Line } from "react-konva";
+import CanvasControls from "./CanvasControls";
 
-type LineType = { points: number[] };
+type LineType = {
+  points: number[],
+  color: string,
+  strokeWidth: number
+};
 
 const INITIAL_SCALE = 1;
 
@@ -15,6 +20,9 @@ const InfiniteCanvas: React.FC = () => {
 
   const [isPanning, setIsPanning] = useState(false);
   const lastPanPos = useRef({ x: 0, y: 0 });
+
+  const [currentColor, setCurrentColor] = useState("#222");
+  const [currentStrokeWidth, setCurrentStrokeWidth] = useState(2);
 
   const getRelativePointer = () => {
     const stage = stageRef.current;
@@ -35,7 +43,7 @@ const InfiniteCanvas: React.FC = () => {
     }
     isDrawing.current = true;
     const pos = getRelativePointer();
-    setLines([...lines, { points: [pos.x, pos.y] }]);
+    setLines([...lines, { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }]);
   };
 
   const handleMouseMove = (e: any) => {
@@ -57,7 +65,9 @@ const InfiniteCanvas: React.FC = () => {
 
     lastLine = {
       ...lastLine,
-      points: lastLine.points.concat([pos.x, pos.y])
+      points: lastLine.points.concat([pos.x, pos.y]),
+      color: currentColor,
+      strokeWidth: currentStrokeWidth
     };
     const newLines = [...lines.slice(0, -1), lastLine];
     setLines(newLines);
@@ -94,17 +104,13 @@ const InfiniteCanvas: React.FC = () => {
 
   return (
     <div>
-      <button
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          zIndex: 10
-        }}
-        onClick={handleClear}
-      >
-        Clear All
-      </button>
+      <CanvasControls
+        color={currentColor}
+        setColor={setCurrentColor}
+        thickness={currentStrokeWidth}
+        setThickness={setCurrentStrokeWidth}
+        onClear={handleClear}
+      />
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
@@ -125,8 +131,8 @@ const InfiniteCanvas: React.FC = () => {
             <Line
               key={i}
               points={line.points}
-              stroke="#222"
-              strokeWidth={2}
+              stroke={line.color}
+              strokeWidth={line.strokeWidth}
               tension={0.5}
               lineCap="round"
               lineJoin="round"
