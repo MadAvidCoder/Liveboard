@@ -16,7 +16,6 @@ const InfiniteCanvas: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
   const lastPanPos = useRef({ x: 0, y: 0 });
 
-  // --- FIX: always use getRelativePointerPosition for drawing points! ---
   const getRelativePointer = () => {
     const stage = stageRef.current;
     return stage.getRelativePointerPosition();
@@ -31,7 +30,6 @@ const InfiniteCanvas: React.FC = () => {
       e.evt.shiftKey
     ) {
       setIsPanning(true);
-      // For panning, still use screen coordinates
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
@@ -42,9 +40,8 @@ const InfiniteCanvas: React.FC = () => {
 
   const handleMouseMove = (e: any) => {
     if (isPanning) {
-      // For pan, use screen deltas and divide by scale
-      const dx = (e.evt.clientX - lastPanPos.current.x) / stageScale;
-      const dy = (e.evt.clientY - lastPanPos.current.y) / stageScale;
+      const dx = e.evt.clientX - lastPanPos.current.x;
+      const dy = e.evt.clientY - lastPanPos.current.y;
       setStagePos((pos) => ({
         x: pos.x + dx,
         y: pos.y + dy,
@@ -81,7 +78,6 @@ const InfiniteCanvas: React.FC = () => {
     const direction = e.evt.deltaY > 0 ? 1 : -1;
     const newScale = direction > 0 ? oldScale / scaleBy : oldScale * scaleBy;
 
-    // Calculate mouse point relative to stage before scaling (screen -> stage transform)
     const mousePointTo = {
       x: (pointer.x - stagePos.x) / oldScale,
       y: (pointer.y - stagePos.y) / oldScale
@@ -121,7 +117,7 @@ const InfiniteCanvas: React.FC = () => {
         onMouseDown={handleMouseDown}
         onMousemove={handleMouseMove}
         onMouseup={handleMouseUp}
-        onContextMenu={e => e.evt.preventDefault()} // disable context menu
+        onContextMenu={e => e.evt.preventDefault()}
         style={{ background: "#fff", cursor: isPanning ? "grab" : "crosshair" }}
       >
         <Layer>
