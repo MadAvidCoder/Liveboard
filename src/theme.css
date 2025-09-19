@@ -1,0 +1,14 @@
+:root {
+  --background: #f8fafc;
+  --surface: #fff;
+  --surface-glass: rgba(255,255,255,0.72);
+  --on-surface: #222;
+  --on-surface-muted: #72788a;
+  --primary: #4f8cff;
+  --primary-accent: #b8d1ff;
+  --border: #e2e8f0;
+  --shadow: 0 4px 32px 0 rgba(60, 70, 100, 0.11);
+  --radius: 16px;
+  --toolbar-height: 60px;
+  --transition: 0.16s cubic-bezier(.4,0,.2,1);
+}

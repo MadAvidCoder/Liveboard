@@ -1,16 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap');
+@import url('./theme.css');
 
 body {
-  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-  background-color: #f8fafd;
+  background: var(--background);
+  color: var(--on-surface);
+  font-family: 'Inter', 'SF Pro Display', 'Segoe UI', 'Roboto', Arial, sans-serif;
   margin: 0;
-  padding: 0;
+  min-height: 100vh;
 }
-
 #root {
   min-height: 100vh;
   min-width: 100vw;
-  background-color: #f8fafd;
-  background-image: radial-gradient(rgba(120,120,143,0.13) 1.15px, transparent 1.15px);
-  background-size: 26px 26px;
+  background-color: var(--background);
+  background-image: radial-gradient(rgba(120,120,143,0.10) 1.1px, transparent 1.1px);
+  background-size: 24px 24px;
 }

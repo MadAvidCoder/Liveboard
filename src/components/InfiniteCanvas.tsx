@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Stage, Layer, Line } from "react-konva";
-import CanvasControls from "./CanvasControls";
+import Toolbar from "./Toolbar";
 
 type LineType = {
   points: number[],
@@ -8,7 +8,27 @@ type LineType = {
   strokeWidth: number
 };
 
+export type Tool = "pen" | "eraser" | "shape" | "undo" | "redo";
+
 const INITIAL_SCALE = 1;
+
+function distToSegment(p: { x: number, y: number }, v: { x: number, y: number }, w: { x: number, y: number }) {
+  const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+  if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+  let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+}
+
+function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, radius: number) {
+  const pts = line.points;
+  for (let i = 0; i < pts.length - 2; i += 2) {
+    const x1 = pts[i], y1 = pts[i + 1];
+    const x2 = pts[i + 2], y2 = pts[i + 3];
+    if (distToSegment(eraserPoint, { x: x1, y: y1 }, { x: x2, y: y2 }) < radius) return true;
+  }
+  return false;
+}
 
 const InfiniteCanvas: React.FC = () => {
   const [lines, setLines] = useState<LineType[]>([]);
@@ -23,6 +43,9 @@ const InfiniteCanvas: React.FC = () => {
 
   const [currentColor, setCurrentColor] = useState("#222");
   const [currentStrokeWidth, setCurrentStrokeWidth] = useState(2);
+  const [activeTool, setActiveTool] = useState<Tool>("pen");
+
+  const [eraserRadius, setEraserRadius] = useState(16);
 
   const getRelativePointer = () => {
     const stage = stageRef.current;
@@ -43,7 +66,9 @@ const InfiniteCanvas: React.FC = () => {
     }
     isDrawing.current = true;
     const pos = getRelativePointer();
-    setLines([...lines, { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }]);
+    if (activeTool === "pen") {
+      setLines([...lines, { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }]);
+    }
   };
 
   const handleMouseMove = (e: any) => {
@@ -60,17 +85,21 @@ const InfiniteCanvas: React.FC = () => {
 
     if (!isDrawing.current) return;
     const pos = getRelativePointer();
-    let lastLine = lines[lines.length - 1];
-    if (!lastLine) return;
+    if (activeTool === "eraser") {
+      setLines(prevLines => prevLines.filter(line => !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius)));
+    } else if (activeTool === "pen") {
+      let lastLine = lines[lines.length - 1];
+      if (!lastLine) return;
 
-    lastLine = {
-      ...lastLine,
-      points: lastLine.points.concat([pos.x, pos.y]),
-      color: currentColor,
-      strokeWidth: currentStrokeWidth
-    };
-    const newLines = [...lines.slice(0, -1), lastLine];
-    setLines(newLines);
+      lastLine = {
+        ...lastLine,
+        points: lastLine.points.concat([pos.x, pos.y]),
+        color: currentColor,
+        strokeWidth: currentStrokeWidth
+      };
+      const newLines = [...lines.slice(0, -1), lastLine];
+      setLines(newLines);
+    }
   };
 
   const handleMouseUp = () => {
@@ -104,13 +133,7 @@ const InfiniteCanvas: React.FC = () => {
 
   return (
     <div>
-      <CanvasControls
-        color={currentColor}
-        setColor={setCurrentColor}
-        thickness={currentStrokeWidth}
-        setThickness={setCurrentStrokeWidth}
-        onClear={handleClear}
-      />
+      <Toolbar activeTool={activeTool} setTool={setActiveTool} />
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
