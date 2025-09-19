@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
-import { Stage, Layer, Line } from "react-konva";
+import { Stage, Layer, Line, Circle } from "react-konva";
 import Toolbar from "./Toolbar";
+import DotsBackground from "./DotsBackground";
 
 type LineType = {
   points: number[],
@@ -20,17 +21,19 @@ function distToSegment(p: { x: number, y: number }, v: { x: number, y: number },
   return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
 }
 
-function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, radius: number) {
+function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, radius: number, stageScale: number = 1) {
   const pts = line.points;
   for (let i = 0; i < pts.length - 2; i += 2) {
     const x1 = pts[i], y1 = pts[i + 1];
     const x2 = pts[i + 2], y2 = pts[i + 3];
-    if (distToSegment(eraserPoint, { x: x1, y: y1 }, { x: x2, y: y2 }) < radius) return true;
+    if (distToSegment(eraserPoint, { x: x1, y: y1 }, { x: x2, y: y2 }) < radius / stageScale) return true;
   }
   return false;
 }
 
 const InfiniteCanvas: React.FC = () => {
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+
   const [lines, setLines] = useState<LineType[]>([]);
   const isDrawing = useRef(false);
   const stageRef = useRef<any>(null);
@@ -45,7 +48,7 @@ const InfiniteCanvas: React.FC = () => {
   const [currentStrokeWidth, setCurrentStrokeWidth] = useState(2);
   const [activeTool, setActiveTool] = useState<Tool>("pen");
 
-  const [eraserRadius, setEraserRadius] = useState(16);
+  const [eraserRadius, setEraserRadius] = useState(10);
 
   const getRelativePointer = () => {
     const stage = stageRef.current;
@@ -72,6 +75,9 @@ const InfiniteCanvas: React.FC = () => {
   };
 
   const handleMouseMove = (e: any) => {
+    const pos = getRelativePointer();
+    setCursorPos({ x: pos.x, y: pos.y });
+
     if (isPanning) {
       const dx = e.evt.clientX - lastPanPos.current.x;
       const dy = e.evt.clientY - lastPanPos.current.y;
@@ -84,9 +90,8 @@ const InfiniteCanvas: React.FC = () => {
     }
 
     if (!isDrawing.current) return;
-    const pos = getRelativePointer();
     if (activeTool === "eraser") {
-      setLines(prevLines => prevLines.filter(line => !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius)));
+      setLines(prevLines => prevLines.filter(line => !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)));
     } else if (activeTool === "pen") {
       let lastLine = lines[lines.length - 1];
       if (!lastLine) return;
@@ -106,6 +111,8 @@ const InfiniteCanvas: React.FC = () => {
     isDrawing.current = false;
     setIsPanning(false);
   };
+
+  const handleMouseLeave = () => setCursorPos(null);
 
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
@@ -145,10 +152,23 @@ const InfiniteCanvas: React.FC = () => {
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMousemove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         onMouseup={handleMouseUp}
         onContextMenu={e => e.evt.preventDefault()}
-        style={{ background: "transparent", cursor: isPanning ? "grab" : "crosshair" }}
+        style={{ background: "transparent", cursor: isPanning ? "grab" : activeTool === "eraser" ? "none" : activeTool === "pen" ? "crosshair" : "default" }}
       >
+        <Layer listening={false}>
+          <DotsBackground
+            width={window.innerWidth}
+            height={window.innerHeight}
+            stagePos={stagePos}
+            stageScale={stageScale}
+            dotSpacing={32}
+            dotRadius={1.5}
+            color="#d8e1e4ff"
+            opacity={0.6}
+          />
+        </Layer>
         <Layer>
           {lines.map((line, i) => (
             <Line
@@ -162,6 +182,17 @@ const InfiniteCanvas: React.FC = () => {
               globalCompositeOperation="source-over"
             />
           ))}
+          {activeTool === "eraser" && cursorPos && (
+            <Circle
+              x={cursorPos.x}
+              y={cursorPos.y}
+              radius={eraserRadius / stageScale}
+              stroke="#6393ed"
+              strokeWidth={5 / stageScale}
+              opacity={0.8}
+              listening={false}
+            />
+          )}
         </Layer>
       </Stage>
     </div>
