@@ -3,10 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'"
-    />
+    <!-- WARNING: REMOVE 'unsafe-inline' BEFORE PRODUCTION -->
+     <meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <meta
       http-equiv="X-Content-Security-Policy"
       content="default-src 'self'; script-src 'self'"
@@ -22,6 +21,6 @@
     <title>Liveboard</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root" class="dotBackground"></div>
   </body>
 </html>

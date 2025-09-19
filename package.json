@@ -14,6 +14,7 @@
     "electron": "electron ."
   },
   "devDependencies": {
+    "@types/css-modules": "^1.0.5",
     "ajv": "^8.17.1",
     "electron": "^38.1.2",
     "typescript": "^4.9.5"

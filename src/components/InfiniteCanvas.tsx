@@ -124,7 +124,7 @@ const InfiniteCanvas: React.FC = () => {
         onMousemove={handleMouseMove}
         onMouseup={handleMouseUp}
         onContextMenu={e => e.evt.preventDefault()}
-        style={{ background: "#fff", cursor: isPanning ? "grab" : "crosshair" }}
+        style={{ background: "transparent", cursor: isPanning ? "grab" : "crosshair" }}
       >
         <Layer>
           {lines.map((line, i) => (

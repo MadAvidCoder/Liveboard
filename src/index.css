@@ -1,0 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap');
+
+body {
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  background-color: #f8fafd;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  min-height: 100vh;
+  min-width: 100vw;
+  background-color: #f8fafd;
+  background-image: radial-gradient(rgba(120,120,143,0.13) 1.15px, transparent 1.15px);
+  background-size: 26px 26px;
+}
