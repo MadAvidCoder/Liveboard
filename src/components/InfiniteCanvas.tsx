@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { Stage, Layer, Line, Circle } from "react-konva";
 import Toolbar from "./Toolbar";
-import DotsBackground from "./DotsBackground";
+import DotCanvasOverlay from "./DotCanvasOverlay";
 
 type LineType = {
   points: number[],
@@ -141,6 +141,19 @@ const InfiniteCanvas: React.FC = () => {
   return (
     <div>
       <Toolbar activeTool={activeTool} setTool={setActiveTool} />
+      <Layer listening={false}>
+        <DotCanvasOverlay
+          stagePos={stagePos}
+          stageScale={stageScale}
+          width={window.innerWidth}
+          height={window.innerHeight}
+          baseDotSpacing={32}
+          dotRadius={1.5}
+          color="#d8e1e4ff"
+          opacity={0.75}
+          minScreenSpacing={16}
+          />
+      </Layer>
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
@@ -157,18 +170,6 @@ const InfiniteCanvas: React.FC = () => {
         onContextMenu={e => e.evt.preventDefault()}
         style={{ background: "transparent", cursor: isPanning ? "grab" : activeTool === "eraser" ? "none" : activeTool === "pen" ? "crosshair" : "default" }}
       >
-        <Layer listening={false}>
-          <DotsBackground
-            width={window.innerWidth}
-            height={window.innerHeight}
-            stagePos={stagePos}
-            stageScale={stageScale}
-            dotSpacing={32}
-            dotRadius={1.5}
-            color="#d8e1e4ff"
-            opacity={0.6}
-          />
-        </Layer>
         <Layer>
           {lines.map((line, i) => (
             <Line
