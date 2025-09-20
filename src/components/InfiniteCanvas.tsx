@@ -39,6 +39,8 @@ const InfiniteCanvas: React.FC = () => {
   const [undoneLines, setUndoneLines] = useState<LineType[]>([]);
   const [undoBuffer, setUndoBuffer] = useState<string[]>([]);
   const [eraseBuffer, setEraseBuffer] = useState<LineType[]>([]);
+  const [redoBuffer, setRedoBuffer] = useState<string[]>([]);
+  const [redoEraseBuffer, setRedoEraseBuffer] = useState<LineType[]>([]);
 
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
@@ -64,31 +66,56 @@ const InfiniteCanvas: React.FC = () => {
   const undo = () => {
     const action: string | undefined = undoBuffer.pop();
     if (!action) return;
+    setUndoBuffer([...undoBuffer]);
     if (action === "erase") {
       const lastErased: LineType | undefined = eraseBuffer.pop();
       if (lastErased) {
         setLines(prevLines => [...prevLines, lastErased]);
+        setRedoBuffer(prev => [...prev, "erase"]);
+        setRedoEraseBuffer(prev => [...prev, lastErased]);
       }
+      setEraseBuffer([...eraseBuffer]);
     } else if (action === "draw") {
       if (lines.length === 0) return;
       setUndoneLines(prevUndoneLines => {
         const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
-        
+
         if (updatedUndoneLines.length > 50) {
           updatedUndoneLines.slice(1);
         }
 
         return updatedUndoneLines;
       });
-      setLines(prev => prev.slice(0, -1));
+      setRedoBuffer(prev => [...prev, "draw"]);
+      setLines(prev => {
+        const removed = prev[prev.length - 1];
+        return prev.slice(0, -1);
+      });
     }
   }
 
   const redo = () => {
-    if (undoneLines.length === 0) return;
-    setLines(prev => [...prev, undoneLines[undoneLines.length - 1]]);
-    setUndoneLines(prev => prev.slice(0, -1));
-  }
+    const action = redoBuffer.pop();
+    if (!action) return;
+    setRedoBuffer([...redoBuffer]);
+
+    if (action === "erase") {
+      const lastErased = redoEraseBuffer.pop();
+      if (lastErased) {
+        setLines(prev => prev.filter(line => line !== lastErased));
+        setUndoBuffer(prev => [...prev, "erase"]);
+        setEraseBuffer(prev => [...prev, lastErased]);
+      }
+      setRedoEraseBuffer([...redoEraseBuffer]);
+    } else if (action === "draw") {
+      const lastDrawn = undoneLines.pop();
+      if (lastDrawn) {
+        setLines(prev => [...prev, lastDrawn]);
+        setUndoBuffer(prev => [...prev, "draw"]);
+      }
+      setUndoneLines([...undoneLines]);
+    }
+  };
 
   const initialPinch = useRef<{
     center: { x: number; y: number },
@@ -158,7 +185,6 @@ const InfiniteCanvas: React.FC = () => {
         setEraseBuffer(prev => [...prev, ...erasedLines]);
         setUndoBuffer(prev => [...prev, ...erasedLines.map(() => "erase")]);
         setUndoneLines([]);
-        console.log("Erased lines:", erasedLines.length);
       }
     } else if (activeTool === "pen") {
       setLines(lines => {
