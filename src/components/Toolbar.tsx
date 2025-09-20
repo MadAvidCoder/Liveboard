@@ -80,13 +80,14 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
         >
           {FaEraser({size: 18})}
         </button>
-        <button
+        <div></div>
+        {/* <button
           className={`toolbar-btn${activeTool === "shape" ? " selected" : ""}`}
           aria-label="Draw shape"
           onClick={() => handleToolClick("shape")}
         >
           {FaRegCircle({size: 18})}
-        </button>
+        </button> */}
         <button
           className="toolbar-btn"
           aria-label="Undo"
