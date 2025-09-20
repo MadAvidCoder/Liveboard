@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect } from "react";
+import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { Tool } from "./InfiniteCanvas";
 import "./Toolbar.css";
 import "./ToolbarButton.css";
@@ -20,6 +20,25 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [subToolbarPos, setSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
   const penButtonRef = useRef<HTMLButtonElement>(null);
+  const subToolbarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showPenOptions) return;
+
+    function handleClickOutside(event: PointerEvent) {
+      if (
+        penButtonRef.current &&
+        !penButtonRef.current.contains(event.target as Node) &&
+        subToolbarRef.current &&
+        !subToolbarRef.current.contains(event.target as Node)
+      ) {
+        setShowPenOptions(false);
+      }
+    }
+
+    document.addEventListener("pointerdown", handleClickOutside);
+    return () => document.removeEventListener("pointerdown", handleClickOutside);
+  }, [showPenOptions]);
 
   const handlePenClick = () => {
     setTool("pen");
@@ -84,6 +103,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
       {activeTool === "pen" && showPenOptions && (
         <nav
           className="pen-subtoolbar"
+          ref={subToolbarRef}
           style={{
             position: "fixed",
             top: `${subToolbarPos.top}px`,
