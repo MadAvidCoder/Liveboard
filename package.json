@@ -1,26 +1,71 @@
 {
   "name": "liveboard",
   "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
+  "description": "Liveboard transforms your desktop into an endless canvas, making your background a living space for creativity, visual notes, and spontaneous inspiration. Always on your desktop, liveboard makes creativity just a click away!",
+  "author": "MadAvidCoder",
   "type": "commonjs",
-  "main": "main/index.js",
+  "main": "main/electron.js",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "electron": "electron ."
+    "electron": "electron .",
+    "package": "electron-builder"
+  },
+  "build": {
+    "appId": "com.madavidcoder.liveboard",
+    "productName": "liveboard",
+    "copyright": "Copyright © 2025 MadAvidCoder",
+    "files": [
+      "package.json",
+      "build/**/*",
+      "main/electron.js",
+      "tray_icon.*",
+      "!node_modules/fsevents/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "zip"
+      ],
+      "icon": "tray_icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowElevation": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "tray_icon.icns"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "tray_icon.png"
+    }
   },
   "devDependencies": {
     "@types/css-modules": "^1.0.5",
-    "electron": "^38.1.2",
+    "electron": "28.2.3",
+    "electron-builder": "^26.0.12",
+    "electron-is-dev": "^3.0.1",
     "typescript": "^4.9.5"
   },
   "dependencies": {
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
+    "auto-launch": "^5.0.6",
     "konva": "^9.3.22",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

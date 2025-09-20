@@ -1,5 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, screen } = require('electron');
 const path = require('path');
+const AutoLaunch = require('auto-launch');
+const isDev = require('electron-is-dev');
 
 let tray = null;
 let win = null;
@@ -27,7 +29,11 @@ function createWindow() {
     },
   });
 
-  win.loadURL('http://localhost:3000'); // or your HTML file
+  if (isDev) {
+    win.loadURL('http://localhost:3000'); // or your HTML file
+  } else {
+    win.loadURL(`file://${path.join(__dirname, '../build/index.html')}`);
+  }
 
   win.once('ready-to-show', () => {
     win.show();
@@ -85,6 +91,21 @@ app.whenReady().then(() => {
     if (tray) tray.popUpContextMenu();
   });
 });
+
+const liveboardAutoLauncher = new AutoLaunch({
+  name: 'Liveboard',
+  path: process.execPath,
+});
+
+liveboardAutoLauncher.isEnabled()
+  .then((isEnabled) => {
+    if (!isEnabled) {
+      liveboardAutoLauncher.enable();
+    }
+  })
+  .catch((err) => {
+    console.error('Auto-launch error:', err);
+  });
 
 app.on('window-all-closed', () => {
 });
