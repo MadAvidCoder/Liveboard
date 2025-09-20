@@ -1,7 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Stage, Layer, Line, Circle } from "react-konva";
 import Toolbar from "./Toolbar";
 import DotCanvasOverlay from "./DotCanvasOverlay";
+import { KonvaEventObject } from "konva/lib/Node";
 
 type LineType = {
   points: number[],
@@ -33,55 +34,60 @@ function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, rad
 
 const InfiniteCanvas: React.FC = () => {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
-
   const [lines, setLines] = useState<LineType[]>([]);
-  const isDrawing = useRef(false);
-  const stageRef = useRef<any>(null);
-
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
   const [isPanning, setIsPanning] = useState(false);
-  const lastPanPos = useRef({ x: 0, y: 0 });
-
   const [currentColor, setCurrentColor] = useState("#222");
   const [currentStrokeWidth, setCurrentStrokeWidth] = useState(2);
   const [activeTool, setActiveTool] = useState<Tool>("pen");
+  const [eraserRadius] = useState(10);
 
-  const [eraserRadius, setEraserRadius] = useState(10);
+  const stageRef = useRef<any>(null);
+  const lastPanPos = useRef({ x: 0, y: 0 });
+  const isDrawing = useRef(false);
+  const drawPointerId = useRef<number | null>(null);
+
+  const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
+  const lastTouchDist = useRef<number | null>(null);
 
   const getRelativePointer = () => {
     const stage = stageRef.current;
     return stage.getRelativePointerPosition();
   };
 
-  const handleMouseDown = (e: any) => {
+  const handlePointerDown = (e: any) => {
     if (
-      e.evt.button === 2 ||
-      e.evt.ctrlKey ||
-      e.evt.metaKey ||
-      e.evt.altKey ||
-      e.evt.shiftKey
+      (e.evt.button === 2 ||
+        e.evt.ctrlKey ||
+        e.evt.metaKey ||
+        e.evt.altKey ||
+        e.evt.shiftKey)
     ) {
       setIsPanning(true);
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
     isDrawing.current = true;
+    drawPointerId.current = e.evt.pointerId;
     const pos = getRelativePointer();
     if (activeTool === "pen") {
-      setLines([...lines, { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }]);
+      setLines(lines => [
+        ...lines,
+        { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }
+      ]);
     }
   };
 
-  const handleMouseMove = (e: any) => {
+  const handlePointerMove = (e: any) => {
     const pos = getRelativePointer();
     setCursorPos({ x: pos.x, y: pos.y });
 
     if (isPanning) {
       const dx = e.evt.clientX - lastPanPos.current.x;
       const dy = e.evt.clientY - lastPanPos.current.y;
-      setStagePos((pos) => ({
+      setStagePos(pos => ({
         x: pos.x + dx,
         y: pos.y + dy,
       }));
@@ -89,30 +95,40 @@ const InfiniteCanvas: React.FC = () => {
       return;
     }
 
-    if (!isDrawing.current) return;
-    if (activeTool === "eraser") {
-      setLines(prevLines => prevLines.filter(line => !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)));
-    } else if (activeTool === "pen") {
-      let lastLine = lines[lines.length - 1];
-      if (!lastLine) return;
+    if (!isDrawing.current || drawPointerId.current !== e.evt.pointerId) return;
 
-      lastLine = {
-        ...lastLine,
-        points: lastLine.points.concat([pos.x, pos.y]),
-        color: currentColor,
-        strokeWidth: currentStrokeWidth
-      };
-      const newLines = [...lines.slice(0, -1), lastLine];
-      setLines(newLines);
+    if (activeTool === "eraser") {
+      setLines(prevLines =>
+        prevLines.filter(line =>
+          !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
+        )
+      );
+    } else if (activeTool === "pen") {
+      setLines(lines => {
+        let lastLine = lines[lines.length - 1];
+        if (!lastLine) return lines;
+        lastLine = {
+          ...lastLine,
+          points: lastLine.points.concat([pos.x, pos.y]),
+          color: currentColor,
+          strokeWidth: currentStrokeWidth
+        };
+        return [...lines.slice(0, -1), lastLine];
+      });
     }
   };
 
-  const handleMouseUp = () => {
-    isDrawing.current = false;
-    setIsPanning(false);
+  const handlePointerUp = (e: any) => {
+    if (isDrawing.current && drawPointerId.current === e.evt.pointerId) {
+      isDrawing.current = false;
+      drawPointerId.current = null;
+    }
+    if (isPanning) {
+      setIsPanning(false);
+    }
   };
 
-  const handleMouseLeave = () => setCursorPos(null);
+  const handlePointerLeave = () => setCursorPos(null);
 
   const handleWheel = (e: any) => {
     e.evt.preventDefault();
@@ -136,7 +152,73 @@ const InfiniteCanvas: React.FC = () => {
     });
   };
 
-  const handleClear = () => setLines([]);
+  const handleTouchStart = (e: KonvaEventObject<TouchEvent>) => {
+    if (e.evt.touches.length === 2) {
+      const t0 = e.evt.touches[0];
+      const t1 = e.evt.touches[1];
+      const center = {
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2
+      };
+      lastTouchCenter.current = center;
+      lastTouchDist.current = Math.hypot(
+        t0.clientX - t1.clientX,
+        t0.clientY - t1.clientY
+      );
+      setIsPanning(true);
+    }
+  };
+
+  const handleTouchMove = (e: KonvaEventObject<TouchEvent>) => {
+    if (e.evt.touches.length === 2 && lastTouchCenter.current && lastTouchDist.current) {
+      e.evt.preventDefault(); // Prevent scrolling
+
+      const t0 = e.evt.touches[0];
+      const t1 = e.evt.touches[1];
+      const center = {
+        x: (t0.clientX + t1.clientX) / 2,
+        y: (t0.clientY + t1.clientY) / 2
+      };
+      const dist = Math.hypot(
+        t0.clientX - t1.clientX,
+        t0.clientY - t1.clientY
+      );
+
+      const dx = center.x - lastTouchCenter.current.x;
+      const dy = center.y - lastTouchCenter.current.y;
+      setStagePos(pos => ({
+        x: pos.x + dx,
+        y: pos.y + dy,
+      }));
+      lastTouchCenter.current = center;
+
+      const scaleFactor = dist / lastTouchDist.current;
+      setStageScale(s => {
+        let ns = s * scaleFactor;
+        ns = Math.max(0.2, Math.min(5, ns));
+        return ns;
+      });
+      lastTouchDist.current = dist;
+    }
+  };
+
+  const handleTouchEnd = (e: KonvaEventObject<TouchEvent>) => {
+    if (e.evt.touches.length < 2) {
+      setIsPanning(false);
+      lastTouchCenter.current = null;
+      lastTouchDist.current = null;
+    }
+  };
+
+  useEffect(() => {
+    const preventDefault = (e: TouchEvent) => {
+      if (e.touches && e.touches.length === 2) e.preventDefault();
+    };
+    document.addEventListener("touchmove", preventDefault, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", preventDefault);
+    };
+  }, []);
 
   return (
     <div>
@@ -146,7 +228,7 @@ const InfiniteCanvas: React.FC = () => {
         penColor={currentColor}
         setPenColor={setCurrentColor}
         penThickness={currentStrokeWidth}
-        setPenThickness={setCurrentStrokeWidth} 
+        setPenThickness={setCurrentStrokeWidth}
       />
       <Layer listening={false}>
         <DotCanvasOverlay
@@ -159,7 +241,7 @@ const InfiniteCanvas: React.FC = () => {
           color="#d8e1e4ff"
           opacity={0.75}
           minScreenSpacing={16}
-          />
+        />
       </Layer>
       <Stage
         width={window.innerWidth}
@@ -170,12 +252,25 @@ const InfiniteCanvas: React.FC = () => {
         x={stagePos.x}
         y={stagePos.y}
         onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMousemove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onMouseup={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onPointerUp={handlePointerUp}
         onContextMenu={e => e.evt.preventDefault()}
-        style={{ background: "transparent", cursor: isPanning ? "grab" : activeTool === "eraser" ? "none" : activeTool === "pen" ? "crosshair" : "default" }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          background: "transparent",
+          touchAction: "none",
+          cursor: isPanning
+            ? "grab"
+            : activeTool === "eraser"
+            ? "none"
+            : activeTool === "pen"
+            ? "crosshair"
+            : "default",
+        }}
       >
         <Layer>
           {lines.map((line, i) => (
