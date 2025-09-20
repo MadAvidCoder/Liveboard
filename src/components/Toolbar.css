@@ -5,8 +5,8 @@
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 1.1rem;
-  padding: 0.25rem 1.5rem;
+  gap: 1rem;
+  padding: 0.25rem 1.1rem;
   background: var(--surface-glass);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
