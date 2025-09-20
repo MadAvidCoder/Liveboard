@@ -9,6 +9,6 @@
   --border: #e2e8f0;
   --shadow: 0 4px 32px 0 rgba(60, 70, 100, 0.11);
   --radius: 16px;
-  --toolbar-height: 60px;
+  --toolbar-height: 44px;
   --transition: 0.16s cubic-bezier(.4,0,.2,1);
 }

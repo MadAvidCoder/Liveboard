@@ -16,35 +16,35 @@ const Toolbar = ({ activeTool, setTool }: ToolbarProps) => {
         aria-label="Pen tool"
         onClick={() => setTool("pen")}
       >
-        {FaPen({})}
+        {FaPen({size: 18})}
       </button>
       <button
         className={`toolbar-btn${activeTool === "eraser" ? " selected" : ""}`}
         aria-label="Eraser tool"
         onClick={() => setTool("eraser")}
       >
-        {FaEraser({})}
+        {FaEraser({size: 18})}
       </button>
       <button
         className={`toolbar-btn${activeTool === "shape" ? " selected" : ""}`}
         aria-label="Draw shape"
         onClick={() => setTool("shape")}
       >
-        {FaRegCircle({})}
+        {FaRegCircle({size: 18})}
       </button>
       <button
         className="toolbar-btn"
         aria-label="Undo"
         onClick={() => setTool("undo")}
       >
-        {FaUndo({})}
+        {FaUndo({size: 18})}
       </button>
       <button
         className="toolbar-btn"
         aria-label="Redo"
         onClick={() => setTool("redo")}
       >
-        {FaRedo({})}
+        {FaRedo({size: 18})}
       </button>
     </nav>
   );
