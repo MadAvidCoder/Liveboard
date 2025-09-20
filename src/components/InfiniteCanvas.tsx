@@ -52,6 +52,13 @@ const InfiniteCanvas: React.FC = () => {
   const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
   const lastTouchDist = useRef<number | null>(null);
 
+  const initialPinch = useRef<{
+    center: { x: number; y: number },
+    stagePos: { x: number; y: number },
+    stageScale: number,
+    distance: number
+  } | null>(null);
+
   const getRelativePointer = () => {
     const stage = stageRef.current;
     return stage.getRelativePointerPosition();
@@ -153,60 +160,74 @@ const InfiniteCanvas: React.FC = () => {
   };
 
   const handleTouchStart = (e: KonvaEventObject<TouchEvent>) => {
-    if (e.evt.touches.length === 2) {
-      const t0 = e.evt.touches[0];
-      const t1 = e.evt.touches[1];
+    const nativeEvent = e.evt;
+    if (nativeEvent.touches && nativeEvent.touches.length === 2) {
+      const t0 = nativeEvent.touches[0];
+      const t1 = nativeEvent.touches[1];
       const center = {
         x: (t0.clientX + t1.clientX) / 2,
         y: (t0.clientY + t1.clientY) / 2
       };
-      lastTouchCenter.current = center;
-      lastTouchDist.current = Math.hypot(
+      const distance = Math.hypot(
         t0.clientX - t1.clientX,
         t0.clientY - t1.clientY
       );
+      initialPinch.current = {
+        center,
+        stagePos: { ...stagePos },
+        stageScale: stageScale,
+        distance
+      };
       setIsPanning(true);
     }
   };
 
   const handleTouchMove = (e: KonvaEventObject<TouchEvent>) => {
-    if (e.evt.touches.length === 2 && lastTouchCenter.current && lastTouchDist.current) {
-      e.evt.preventDefault(); // Prevent scrolling
+    const nativeEvent = e.evt;
+    if (
+      nativeEvent.touches &&
+      nativeEvent.touches.length === 2 &&
+      initialPinch.current
+    ) {
+      nativeEvent.preventDefault();
 
-      const t0 = e.evt.touches[0];
-      const t1 = e.evt.touches[1];
+      const t0 = nativeEvent.touches[0];
+      const t1 = nativeEvent.touches[1];
       const center = {
         x: (t0.clientX + t1.clientX) / 2,
         y: (t0.clientY + t1.clientY) / 2
       };
-      const dist = Math.hypot(
+      const distance = Math.hypot(
         t0.clientX - t1.clientX,
         t0.clientY - t1.clientY
       );
 
-      const dx = center.x - lastTouchCenter.current.x;
-      const dy = center.y - lastTouchCenter.current.y;
-      setStagePos(pos => ({
-        x: pos.x + dx,
-        y: pos.y + dy,
-      }));
-      lastTouchCenter.current = center;
+      const { center: startCenter, stagePos: startPos, stageScale: startScale, distance: startDistance } = initialPinch.current;
 
-      const scaleFactor = dist / lastTouchDist.current;
-      setStageScale(s => {
-        let ns = s * scaleFactor;
-        ns = Math.max(0.2, Math.min(5, ns));
-        return ns;
-      });
-      lastTouchDist.current = dist;
+      let scale = distance / startDistance * startScale;
+      scale = Math.max(0.2, Math.min(5, scale));
+
+      const worldPos = {
+        x: (startCenter.x - startPos.x) / startScale,
+        y: (startCenter.y - startPos.y) / startScale
+      };
+
+      const newPos = {
+        x: center.x - worldPos.x * scale,
+        y: center.y - worldPos.y * scale
+      };
+
+      setStageScale(scale);
+      setStagePos(newPos);
     }
   };
 
+
   const handleTouchEnd = (e: KonvaEventObject<TouchEvent>) => {
-    if (e.evt.touches.length < 2) {
+    const nativeEvent = e.evt;
+    if (!nativeEvent.touches || nativeEvent.touches.length < 2) {
       setIsPanning(false);
-      lastTouchCenter.current = null;
-      lastTouchDist.current = null;
+      initialPinch.current = null;
     }
   };
 
