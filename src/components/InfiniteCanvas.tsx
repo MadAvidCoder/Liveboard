@@ -10,7 +10,7 @@ type LineType = {
   strokeWidth: number
 };
 
-export type Tool = "pen" | "eraser" | "shape" | "undo" | "redo";
+export type Tool = "pen" | "eraser" | "shape" | null;
 
 const INITIAL_SCALE = 1;
 
@@ -34,23 +34,61 @@ function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, rad
 
 const InfiniteCanvas: React.FC = () => {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+
   const [lines, setLines] = useState<LineType[]>([]);
+  const [undoneLines, setUndoneLines] = useState<LineType[]>([]);
+  const [undoBuffer, setUndoBuffer] = useState<string[]>([]);
+  const [eraseBuffer, setEraseBuffer] = useState<LineType[]>([]);
+
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
   const [isPanning, setIsPanning] = useState(false);
+
   const [currentColor, setCurrentColor] = useState("#222");
   const [currentStrokeWidth, setCurrentStrokeWidth] = useState(2);
+
   const [activeTool, setActiveTool] = useState<Tool>("pen");
+  
   const [eraserRadius] = useState(10);
 
   const stageRef = useRef<any>(null);
+  
   const lastPanPos = useRef({ x: 0, y: 0 });
   const isDrawing = useRef(false);
   const drawPointerId = useRef<number | null>(null);
 
   const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
   const lastTouchDist = useRef<number | null>(null);
+
+  const undo = () => {
+    const action: string | undefined = undoBuffer.pop();
+    if (!action) return;
+    if (action === "erase") {
+      const lastErased: LineType | undefined = eraseBuffer.pop();
+      if (lastErased) {
+        setLines(prevLines => [...prevLines, lastErased]);
+      }
+    } else if (action === "draw") {
+      if (lines.length === 0) return;
+      setUndoneLines(prevUndoneLines => {
+        const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
+        
+        if (updatedUndoneLines.length > 50) {
+          updatedUndoneLines.slice(1);
+        }
+
+        return updatedUndoneLines;
+      });
+      setLines(prev => prev.slice(0, -1));
+    }
+  }
+
+  const redo = () => {
+    if (undoneLines.length === 0) return;
+    setLines(prev => [...prev, undoneLines[undoneLines.length - 1]]);
+    setUndoneLines(prev => prev.slice(0, -1));
+  }
 
   const initialPinch = useRef<{
     center: { x: number; y: number },
@@ -84,6 +122,8 @@ const InfiniteCanvas: React.FC = () => {
         ...lines,
         { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }
       ]);
+      setUndoneLines([]);
+      setUndoBuffer(prev => [...prev, "draw"]);
     }
   };
 
@@ -105,11 +145,21 @@ const InfiniteCanvas: React.FC = () => {
     if (!isDrawing.current || drawPointerId.current !== e.evt.pointerId) return;
 
     if (activeTool === "eraser") {
-      setLines(prevLines =>
-        prevLines.filter(line =>
-          !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
-        )
+      const prevLinesSnapshot = lines;
+      const erasedLines = prevLinesSnapshot.filter(line =>
+        isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
       );
+      if (erasedLines.length > 0) {
+        setLines(prevLines =>
+          prevLines.filter(line =>
+            !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
+          )
+        );
+        setEraseBuffer(prev => [...prev, ...erasedLines]);
+        setUndoBuffer(prev => [...prev, ...erasedLines.map(() => "erase")]);
+        setUndoneLines([]);
+        console.log("Erased lines:", erasedLines.length);
+      }
     } else if (activeTool === "pen") {
       setLines(lines => {
         let lastLine = lines[lines.length - 1];
@@ -122,6 +172,7 @@ const InfiniteCanvas: React.FC = () => {
         };
         return [...lines.slice(0, -1), lastLine];
       });
+      setUndoneLines([])
     }
   };
 
@@ -250,6 +301,8 @@ const InfiniteCanvas: React.FC = () => {
         setPenColor={setCurrentColor}
         penThickness={currentStrokeWidth}
         setPenThickness={setCurrentStrokeWidth}
+        undo={undo}
+        redo={redo}
       />
       <Layer listening={false}>
         <DotCanvasOverlay

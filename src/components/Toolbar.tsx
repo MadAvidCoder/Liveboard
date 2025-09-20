@@ -14,9 +14,11 @@ interface ToolbarProps {
   setPenColor: (color: string) => void;
   penThickness: number;
   setPenThickness: (thickness: number) => void;
+  undo: () => void;
+  redo: () => void;
 }
 
-const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness }: ToolbarProps) => {
+const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, undo, redo }: ToolbarProps) => {
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [subToolbarPos, setSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
   const penButtonRef = useRef<HTMLButtonElement>(null);
@@ -88,14 +90,14 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
         <button
           className="toolbar-btn"
           aria-label="Undo"
-          onClick={() => handleToolClick("undo")}
+          onClick={() => undo()}
         >
           {FaUndo({size: 18})}
         </button>
         <button
           className="toolbar-btn"
           aria-label="Redo"
-          onClick={() => handleToolClick("redo")}
+          onClick={() => redo()}
         >
           {FaRedo({size: 18})}
         </button>
