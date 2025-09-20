@@ -14,9 +14,11 @@ function createWindow() {
     y: 0,
     frame: false,
     transparent: false,
+    kiosk: true,
     resizable: false,
     fullscreenable: true,
     skipTaskbar: true,
+    alwaysOnBottom: true,
     alwaysOnTop: false,
     focusable: true,
     webPreferences: {
@@ -29,6 +31,11 @@ function createWindow() {
 
   win.once('ready-to-show', () => {
     win.show();
+  });
+
+  win.on('minimize', (event) => {
+    event.preventDefault();
+    win.restore();
   });
 
   win.on('close', (event) => {
@@ -53,6 +60,12 @@ app.whenReady().then(() => {
       }
     },
     {
+      label: 'Show Desktop Background',
+      click: () => {
+        if (win) win.hide();
+      }
+    },
+    {
       label: 'Quit',
       click: () => {
         app.isQuiting = true;
@@ -60,11 +73,16 @@ app.whenReady().then(() => {
       }
     }
   ]);
-  tray.setToolTip('My Wallpaper App');
+
+  tray.setToolTip('Liveboard');
   tray.setContextMenu(contextMenu);
 
   tray.on('double-click', () => {
     if (win) win.show();
+  });
+
+  tray.on('click', () => {
+    if (tray) tray.popUpContextMenu();
   });
 });
 
