@@ -140,7 +140,14 @@ const InfiniteCanvas: React.FC = () => {
 
   return (
     <div>
-      <Toolbar activeTool={activeTool} setTool={setActiveTool} />
+      <Toolbar
+        activeTool={activeTool}
+        setTool={setActiveTool}
+        penColor={currentColor}
+        setPenColor={setCurrentColor}
+        penThickness={currentStrokeWidth}
+        setPenThickness={setCurrentStrokeWidth} 
+      />
       <Layer listening={false}>
         <DotCanvasOverlay
           stagePos={stagePos}

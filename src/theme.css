@@ -1,7 +1,7 @@
 :root {
   --background: #f8fafc;
   --surface: #fff;
-  --surface-glass: rgba(255,255,255,0.72);
+  --surface-glass: rgba(255,255,255,0.7);
   --on-surface: #222;
   --on-surface-muted: #72788a;
   --primary: #4f8cff;

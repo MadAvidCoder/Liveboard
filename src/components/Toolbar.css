@@ -10,6 +10,7 @@
   background: var(--surface-glass);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
+  filter: blur(0);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   border: 1.5px solid var(--border);
@@ -17,6 +18,7 @@
   height: var(--toolbar-height);
   transition: box-shadow var(--transition), background var(--transition);
   z-index: 10;
+  isolation: isolate;
 }
 
 @media (max-width: 700px) {
@@ -27,4 +29,30 @@
     min-width: 0;
     gap: 1rem;
   }
+}
+
+.pen-subtoolbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  filter: blur(0);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1.5px solid var(--border);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow var(--transition), background var(--transition);
+  gap: 10px;
+  z-index: 11;
+  min-width: 120px;
+  isolation: isolate;
+}
+
+.pen-colors, .pen-thicknesses {
+  display: flex;
+  gap: 8px;
 }

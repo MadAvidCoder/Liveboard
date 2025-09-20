@@ -38,3 +38,27 @@
   color: #fff;
   box-shadow: 0 2px 12px #4f8cff44;
 }
+
+.color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  outline: none;
+  border: 2px solid #fff;
+  box-shadow: 0 0 2px #0003;
+  transition: border 0.2s;
+}
+
+.thickness-btn {
+  width: 24px;
+  height: 24px;
+  background: none;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
