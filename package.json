@@ -20,6 +20,7 @@
     "productName": "liveboard",
     "copyright": "Copyright © 2025 MadAvidCoder",
     "extends": null,
+    "publish": null,
     "files": [
       "package.json",
       "build/**/*",
