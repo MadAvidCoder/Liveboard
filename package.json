@@ -4,6 +4,7 @@
   "description": "Liveboard transforms your desktop into an endless canvas, making your background a living space for creativity, visual notes, and spontaneous inspiration. Always on your desktop, liveboard makes creativity just a click away!",
   "author": "MadAvidCoder",
   "type": "commonjs",
+  "homepage": ".",
   "main": "main/electron.js",
   "scripts": {
     "start": "react-scripts start",
@@ -15,6 +16,7 @@
     "appId": "com.madavidcoder.liveboard",
     "productName": "liveboard",
     "copyright": "Copyright © 2025 MadAvidCoder",
+    "extends": null,
     "files": [
       "package.json",
       "build/**/*",
@@ -27,7 +29,7 @@
     },
     "win": {
       "target": [
-        "zip"
+        "nsis"
       ],
       "icon": "tray_icon.ico"
     },
@@ -35,7 +37,7 @@
       "oneClick": true,
       "perMachine": false,
       "allowElevation": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": false,
       "createStartMenuShortcut": true,
       "runAfterFinish": true
@@ -59,7 +61,6 @@
     "@types/css-modules": "^1.0.5",
     "electron": "28.2.3",
     "electron-builder": "^26.0.12",
-    "electron-is-dev": "^3.0.1",
     "typescript": "^4.9.5"
   },
   "dependencies": {
@@ -84,5 +85,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
