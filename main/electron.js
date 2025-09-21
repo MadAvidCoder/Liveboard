@@ -1,7 +1,6 @@
 const { app, BrowserWindow, Tray, Menu, screen } = require('electron');
 const path = require('path');
 const AutoLaunch = require('auto-launch');
-const isDev = require('electron-is-dev');
 
 let tray = null;
 let win = null;
@@ -29,11 +28,15 @@ function createWindow() {
     },
   });
 
-  if (isDev) {
-    win.loadURL('http://localhost:3000'); // or your HTML file
-  } else {
-    win.loadURL(`file://${path.join(__dirname, '../build/index.html')}`);
-  }
+  // DEV ONLY
+  // win.loadURL('http://localhost:3000');
+  
+  // PRODUCTION ONLY
+  win.loadFile(path.join(app.getAppPath(), 'build', 'index.html'));
+
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Window failed to load:', errorDescription);
+  });
 
   win.once('ready-to-show', () => {
     win.show();
@@ -60,7 +63,7 @@ app.whenReady().then(() => {
 
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Show Wallpaper',
+      label: 'Show Liveboard',
       click: () => {
         if (win) win.show();
       }
