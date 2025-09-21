@@ -2,7 +2,10 @@
   "name": "liveboard",
   "version": "1.0.0",
   "description": "Liveboard transforms your desktop into an endless canvas, making your background a living space for creativity, visual notes, and spontaneous inspiration. Always on your desktop, liveboard makes creativity just a click away!",
-  "author": "MadAvidCoder",
+  "author": {
+    "name": "MadAvidCoder",
+    "email": "183250896+MadAvidCoder@users.noreply.github.com"
+  },
   "type": "commonjs",
   "homepage": ".",
   "main": "main/electron.js",
