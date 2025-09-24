@@ -42,6 +42,8 @@ const InfiniteCanvas: React.FC = () => {
   const [redoBuffer, setRedoBuffer] = useState<string[]>([]);
   const [redoEraseBuffer, setRedoEraseBuffer] = useState<LineType[]>([]);
 
+  const [currentShape, setCurrentShape] = useState<string>("line");
+
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
@@ -336,6 +338,8 @@ const InfiniteCanvas: React.FC = () => {
         setPenColor={setCurrentColor}
         penThickness={currentStrokeWidth}
         setPenThickness={setCurrentStrokeWidth}
+        selectedShape={currentShape}
+        setSelectedShape={setCurrentShape}
         undo={undo}
         redo={redo}
       />

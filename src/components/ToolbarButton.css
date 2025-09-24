@@ -62,3 +62,32 @@
   align-items: center;
   justify-content: center;
 }
+
+.shape-btn {
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 2px solid #ffffff00;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition: background var(--transition), border var(--transition), color var(--transition);
+}
+
+.shape-btn.selected,
+.shape-btn:focus-visible,
+.shape-btn:hover {
+  background: var(--primary-accent);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.shape-btn.selected {
+  background: var(--primary);
+  color: #fff;
+  border: 2px solid var(--primary);
+  box-shadow: 0 2px 12px #4f8cff44;
+}
