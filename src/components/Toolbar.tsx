@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect, useLayoutEffect } from "react";
-import { Tool } from "./InfiniteCanvas";
+import { Tool, ShapeType } from "./InfiniteCanvas";
 import "./Toolbar.css";
 import "./ToolbarButton.css";
 import { FaPen, FaEraser, FaRegCircle, FaUndo, FaRedo, FaRegSquare } from "react-icons/fa";
@@ -22,8 +22,8 @@ interface ToolbarProps {
   setPenColor: (color: string) => void;
   penThickness: number;
   setPenThickness: (thickness: number) => void;
-  selectedShape: string;
-  setSelectedShape: (shape: string) => void;
+  selectedShape: ShapeType;
+  setSelectedShape: (shape: ShapeType) => void;
   undo: () => void;
   redo: () => void;
 }
@@ -205,7 +205,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={shape.key}
                 className={`shape-btn${selectedShape === shape.key ? " selected" : ""}`}
                 aria-label={shape.label}
-                onClick={() => setSelectedShape(shape.key)}
+                onClick={() => setSelectedShape(shape.key as ShapeType)}
               >
               {shape.icon({ size:18 })}
               </button>

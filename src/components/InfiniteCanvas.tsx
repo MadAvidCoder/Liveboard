@@ -1,13 +1,15 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Stage, Layer, Line, Circle } from "react-konva";
+import { Stage, Layer, Line, Circle, Arrow, Rect, Ellipse } from "react-konva";
 import Toolbar from "./Toolbar";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
 
-type LineType = {
+export type ShapeType = "line" | "arrow" | "circle" | "rectangle";
+type Shape = {
   points: number[],
   color: string,
-  strokeWidth: number
+  strokeWidth: number,
+  type: ShapeType
 };
 
 export type Tool = "pen" | "eraser" | "shape" | null;
@@ -22,7 +24,7 @@ function distToSegment(p: { x: number, y: number }, v: { x: number, y: number },
   return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
 }
 
-function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, radius: number, stageScale: number = 1) {
+function isLineErased(line: Shape, eraserPoint: { x: number, y: number }, radius: number, stageScale: number = 1) {
   const pts = line.points;
   for (let i = 0; i < pts.length - 2; i += 2) {
     const x1 = pts[i], y1 = pts[i + 1];
@@ -35,14 +37,15 @@ function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, rad
 const InfiniteCanvas: React.FC = () => {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
-  const [lines, setLines] = useState<LineType[]>([]);
-  const [undoneLines, setUndoneLines] = useState<LineType[]>([]);
+  const [lines, setLines] = useState<Shape[]>([]);
+  const [undoneLines, setUndoneLines] = useState<Shape[]>([]);
   const [undoBuffer, setUndoBuffer] = useState<string[]>([]);
-  const [eraseBuffer, setEraseBuffer] = useState<LineType[]>([]);
+  const [eraseBuffer, setEraseBuffer] = useState<Shape[]>([]);
   const [redoBuffer, setRedoBuffer] = useState<string[]>([]);
-  const [redoEraseBuffer, setRedoEraseBuffer] = useState<LineType[]>([]);
+  const [redoEraseBuffer, setRedoEraseBuffer] = useState<Shape[]>([]);
 
-  const [currentShape, setCurrentShape] = useState<string>("line");
+  const [currentShape, setCurrentShape] = useState<ShapeType>("line");
+  const [shapePreview, setShapePreview] = useState<null | { points: number[], color: string, strokeWidth: number, type: ShapeType }>(null);
 
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
@@ -70,7 +73,7 @@ const InfiniteCanvas: React.FC = () => {
     if (!action) return;
     setUndoBuffer([...undoBuffer]);
     if (action === "erase") {
-      const lastErased: LineType | undefined = eraseBuffer.pop();
+      const lastErased: Shape | undefined = eraseBuffer.pop();
       if (lastErased) {
         setLines(prevLines => [...prevLines, lastErased]);
         setRedoBuffer(prev => [...prev, "erase"]);
@@ -152,12 +155,19 @@ const InfiniteCanvas: React.FC = () => {
     if (activeTool === "pen") {
       setLines(lines => [
         ...lines,
-        { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }
+        { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth, type: "line" }
       ]);
       setRedoBuffer([]);
       setRedoEraseBuffer([]);
       setUndoneLines([]);
       setUndoBuffer(prev => [...prev, "draw"]);
+    } else if (activeTool === "shape") {
+      setShapePreview({
+        points: [pos.x, pos.y, pos.x, pos.y],
+        color: currentColor,
+        strokeWidth: currentStrokeWidth,
+        type: currentShape
+      });
     }
   };
 
@@ -210,6 +220,12 @@ const InfiniteCanvas: React.FC = () => {
       setRedoBuffer([]);
       setRedoEraseBuffer([]);
       setUndoneLines([]);
+    } else if (activeTool === "shape" && shapePreview) {
+      const [x1, y1] = shapePreview.points;
+      setShapePreview({
+        ...shapePreview,
+        points: [x1, y1, pos.x, pos.y]
+      });
     }
   };
 
@@ -218,9 +234,21 @@ const InfiniteCanvas: React.FC = () => {
       isDrawing.current = false;
       drawPointerId.current = null;
     }
-    if (isPanning) {
-      setIsPanning(false);
+    if (activeTool === "shape" && shapePreview) {
+      setLines(lines => [
+        ...lines,
+        {
+          points: shapePreview.points,
+          color: shapePreview.color,
+          strokeWidth: shapePreview.strokeWidth,
+          type: shapePreview.type,
+        },
+      ]);
+      setShapePreview(null);
+      setUndoBuffer(prev => [...prev, "draw"]);
+      setRedoBuffer([]);
     }
+    setIsPanning(false);
   };
 
   const handlePointerLeave = () => setCursorPos(null);
@@ -386,18 +414,119 @@ const InfiniteCanvas: React.FC = () => {
         }}
       >
         <Layer>
-          {lines.map((line, i) => (
-            <Line
-              key={i}
-              points={line.points}
-              stroke={line.color}
-              strokeWidth={line.strokeWidth}
-              tension={0.5}
-              lineCap="round"
-              lineJoin="round"
-              globalCompositeOperation="source-over"
-            />
-          ))}
+          {lines.map((shape, i) => {
+            switch (shape.type) {
+              case "arrow":
+                return (
+                  <Arrow
+                    key={i}
+                    points={shape.points}
+                    stroke={shape.color}
+                    fill={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    pointerLength={16}
+                    pointerWidth={16}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation="source-over"
+                  />
+                );
+              case "rectangle":
+                return (
+                  <Rect
+                    key={i}
+                    x={Math.min(shape.points[0], shape.points[2])}
+                    y={Math.min(shape.points[1], shape.points[3])}
+                    width={Math.abs(shape.points[2] - shape.points[0])}
+                    height={Math.abs(shape.points[3] - shape.points[1])}
+                    stroke={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    globalCompositeOperation="source-over"
+                  />
+                );
+              case "circle":
+                return (
+                  <Ellipse
+                    key={i}
+                    x={(shape.points[0] + shape.points[2]) / 2}
+                    y={(shape.points[1] + shape.points[3]) / 2}
+                    radiusX={Math.abs(shape.points[2] - shape.points[0]) / 2}
+                    radiusY={Math.abs(shape.points[3] - shape.points[1]) / 2}
+                    stroke={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    globalCompositeOperation="source-over"
+                  />
+                );
+              case "line":
+              default:
+                return (
+                  <Line
+                    key={i}
+                    points={shape.points}
+                    stroke={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    tension={0}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation="source-over"
+                  />
+                );
+            }
+          })}
+          {shapePreview && activeTool === "shape" && (
+            <>
+              {shapePreview.type === "line" && (
+                <Line
+                  points={shapePreview.points}
+                  stroke={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  tension={0}
+                  lineCap="round"
+                  lineJoin="round"
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+              {shapePreview.type === "arrow" && (
+                <Arrow
+                  points={shapePreview.points}
+                  stroke={shapePreview.color}
+                  fill={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  pointerLength={16}
+                  pointerWidth={16}
+                  lineCap="round"
+                  lineJoin="round"
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+              {shapePreview.type === "rectangle" && (
+                <Rect
+                  x={Math.min(shapePreview.points[0], shapePreview.points[2])}
+                  y={Math.min(shapePreview.points[1], shapePreview.points[3])}
+                  width={Math.abs(shapePreview.points[2] - shapePreview.points[0])}
+                  height={Math.abs(shapePreview.points[3] - shapePreview.points[1])}
+                  stroke={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+              {shapePreview.type === "circle" && (
+                <Ellipse
+                  x={(shapePreview.points[0] + shapePreview.points[2]) / 2}
+                  y={(shapePreview.points[1] + shapePreview.points[3]) / 2}
+                  radiusX={Math.abs(shapePreview.points[2] - shapePreview.points[0]) / 2}
+                  radiusY={Math.abs(shapePreview.points[3] - shapePreview.points[1]) / 2}
+                  stroke={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+            </>
+          )}
           {activeTool === "eraser" && cursorPos && (
             <Circle
               x={cursorPos.x}
