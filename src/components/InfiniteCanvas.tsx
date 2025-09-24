@@ -142,8 +142,7 @@ const InfiniteCanvas: React.FC = () => {
       (e.evt.button === 2 ||
         e.evt.ctrlKey ||
         e.evt.metaKey ||
-        e.evt.altKey ||
-        e.evt.shiftKey)
+        e.evt.altKey)
     ) {
       setIsPanning(true);
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
@@ -221,10 +220,22 @@ const InfiniteCanvas: React.FC = () => {
       setRedoEraseBuffer([]);
       setUndoneLines([]);
     } else if (activeTool === "shape" && shapePreview) {
-      const [x1, y1] = shapePreview.points;
+    const [x1, y1] = shapePreview.points;
+    let x2 = pos.x;
+    let y2 = pos.y;
+    if (
+      (shapePreview.type === "rectangle" || shapePreview.type === "circle") &&
+      e.evt.shiftKey
+    ) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const mag = Math.max(Math.abs(dx), Math.abs(dy));
+        x2 = x1 + mag * Math.sign(dx || 1);
+        y2 = y1 + mag * Math.sign(dy || 1);
+      }
       setShapePreview({
         ...shapePreview,
-        points: [x1, y1, pos.x, pos.y]
+        points: [x1, y1, x2, y2]
       });
     }
   };
