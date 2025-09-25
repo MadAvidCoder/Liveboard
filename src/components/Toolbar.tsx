@@ -2,7 +2,7 @@ import { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { Tool, ShapeType } from "./InfiniteCanvas";
 import "./Toolbar.css";
 import "./ToolbarButton.css";
-import { FaPen, FaEraser, FaRegCircle, FaUndo, FaRedo, FaRegSquare } from "react-icons/fa";
+import { FaPen, FaEraser, FaRegCircle, FaUndo, FaRedo, FaRegSquare, FaFont } from "react-icons/fa";
 import { FaMinus, FaArrowRight } from "react-icons/fa6";
 
 const COLORS = ["#222", "#4f8cff", "#e74c3c", "#2ecc40", "#f1c40f"];
@@ -124,6 +124,13 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
           onClick={() => handleShapeClick()}
         >
           {FaRegCircle({size: 18})}
+        </button>
+        <button
+          className={`toolbar-btn${activeTool === "text" ? " selected" : ""}`}
+          aria-label="Draw text"
+          onClick={() => handleToolClick("text")}
+        >
+          {FaFont({size: 18})}
         </button>
         <button
           className="toolbar-btn"

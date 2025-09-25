@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Stage, Layer, Line, Circle, Arrow, Rect, Ellipse } from "react-konva";
+import { Stage, Layer, Line, Circle, Arrow, Rect, Ellipse, Text } from "react-konva";
 import Toolbar from "./Toolbar";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
@@ -12,7 +12,17 @@ type Shape = {
   type: ShapeType
 };
 
-export type Tool = "pen" | "eraser" | "shape" | null;
+export type Tool = "pen" | "eraser" | "shape" | "text" | null;
+
+type Textbox = {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  color: string;
+  isEditing: boolean;
+};
 
 const INITIAL_SCALE = 1;
 
@@ -47,6 +57,9 @@ const InfiniteCanvas: React.FC = () => {
   const [currentShape, setCurrentShape] = useState<ShapeType>("line");
   const [shapePreview, setShapePreview] = useState<null | { points: number[], color: string, strokeWidth: number, type: ShapeType }>(null);
 
+  const [textboxes, setTextboxes] = useState<Textbox[]>([]);
+  const [editingTextboxId, setEditingTextboxId] = useState<string | null>(null);
+
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
 
@@ -65,8 +78,37 @@ const InfiniteCanvas: React.FC = () => {
   const isDrawing = useRef(false);
   const drawPointerId = useRef<number | null>(null);
 
-  const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
-  const lastTouchDist = useRef<number | null>(null);
+  const initialPinch = useRef<{
+    center: { x: number; y: number },
+    stagePos: { x: number; y: number },
+    stageScale: number,
+    distance: number
+  } | null>(null);
+
+  // DOM click for placing textboxes
+  const handleDivClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    if (activeTool !== "text") return;
+    if ((e.target as HTMLElement).tagName === "INPUT") return;
+    const stageContainer = (stageRef.current as any)?.container();
+    if (!stageContainer || !stageContainer.contains(e.target as Node)) return;
+    const boundingRect = stageContainer.getBoundingClientRect();
+    const x = (e.clientX - boundingRect.left - stagePos.x) / stageScale;
+    const y = (e.clientY - boundingRect.top - stagePos.y) / stageScale;
+    const id = Math.random().toString(36).substr(2, 9);
+    setTextboxes(textboxes => [
+      ...textboxes,
+      {
+        id,
+        x,
+        y,
+        text: "",
+        fontSize: 24,
+        color: currentColor,
+        isEditing: true,
+      }
+    ]);
+    setEditingTextboxId(id);
+  };
 
   const undo = () => {
     const action: string | undefined = undoBuffer.pop();
@@ -84,11 +126,9 @@ const InfiniteCanvas: React.FC = () => {
       if (lines.length === 0) return;
       setUndoneLines(prevUndoneLines => {
         const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
-
         if (updatedUndoneLines.length > 50) {
           updatedUndoneLines.slice(1);
         }
-
         return updatedUndoneLines;
       });
       setRedoBuffer(prev => [...prev, "draw"]);
@@ -97,44 +137,27 @@ const InfiniteCanvas: React.FC = () => {
         return prev.slice(0, -1);
       });
     }
-  }
+  };
 
   const redo = () => {
     const action = redoBuffer[redoBuffer.length - 1];
-    setRedoBuffer(prev => prev.slice(0, -1));
     if (!action) return;
-    setRedoBuffer([...redoBuffer]);
+    setRedoBuffer(prev => prev.slice(0, -1));
 
     if (action === "erase") {
       const lastErased = redoEraseBuffer[redoEraseBuffer.length - 1];
+      if (!lastErased) return;
       setRedoEraseBuffer(prev => prev.slice(0, -1));
-      if (lastErased) {
-        setLines(prev => prev.filter(line => line !== lastErased));
-        setUndoBuffer(prev => [...prev, "erase"]);
-        setEraseBuffer(prev => [...prev, lastErased]);
-      }
-      setRedoEraseBuffer([...redoEraseBuffer]);
+      setLines(prev => prev.filter(line => line !== lastErased));
+      setUndoBuffer(prev => [...prev, "erase"]);
+      setEraseBuffer(prev => [...prev, lastErased]);
     } else if (action === "draw") {
       const lastDrawn = undoneLines[undoneLines.length - 1];
+      if (!lastDrawn) return;
       setUndoneLines(prev => prev.slice(0, -1));
-      if (lastDrawn) {
-        setLines(prev => [...prev, lastDrawn]);
-        setUndoBuffer(prev => [...prev, "draw"]);
-      }
-      setUndoneLines([...undoneLines]);
+      setLines(prev => [...prev, lastDrawn]);
+      setUndoBuffer(prev => [...prev, "draw"]);
     }
-  };
-
-  const initialPinch = useRef<{
-    center: { x: number; y: number },
-    stagePos: { x: number; y: number },
-    stageScale: number,
-    distance: number
-  } | null>(null);
-
-  const getRelativePointer = () => {
-    const stage = stageRef.current;
-    return stage.getRelativePointerPosition();
   };
 
   const handlePointerDown = (e: any) => {
@@ -148,10 +171,11 @@ const InfiniteCanvas: React.FC = () => {
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
-    isDrawing.current = true;
-    drawPointerId.current = e.evt.pointerId;
-    const pos = getRelativePointer();
     if (activeTool === "pen") {
+      isDrawing.current = true;
+      drawPointerId.current = e.evt.pointerId;
+      const pos = stageRef.current?.getPointerPosition();
+      if (!pos) return;
       setLines(lines => [
         ...lines,
         { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth, type: "line" }
@@ -161,17 +185,27 @@ const InfiniteCanvas: React.FC = () => {
       setUndoneLines([]);
       setUndoBuffer(prev => [...prev, "draw"]);
     } else if (activeTool === "shape") {
+      isDrawing.current = true;
+      drawPointerId.current = e.evt.pointerId;
+      const pos = stageRef.current?.getPointerPosition();
+      if (!pos) return;
       setShapePreview({
         points: [pos.x, pos.y, pos.x, pos.y],
         color: currentColor,
         strokeWidth: currentStrokeWidth,
         type: currentShape
       });
+    } else if (activeTool === "eraser") {
+      isDrawing.current = true;
+      drawPointerId.current = e.evt.pointerId;
     }
   };
 
   const handlePointerMove = (e: any) => {
-    const pos = getRelativePointer();
+    const stage = stageRef.current;
+    const pos = stage ? stage.getPointerPosition() : null;
+    if (!pos) return;
+
     setCursorPos({ x: pos.x, y: pos.y });
 
     if (isPanning) {
@@ -220,13 +254,13 @@ const InfiniteCanvas: React.FC = () => {
       setRedoEraseBuffer([]);
       setUndoneLines([]);
     } else if (activeTool === "shape" && shapePreview) {
-    const [x1, y1] = shapePreview.points;
-    let x2 = pos.x;
-    let y2 = pos.y;
-    if (
-      (shapePreview.type === "rectangle" || shapePreview.type === "circle") &&
-      e.evt.shiftKey
-    ) {
+      const [x1, y1] = shapePreview.points;
+      let x2 = pos.x;
+      let y2 = pos.y;
+      if (
+        (shapePreview.type === "rectangle" || shapePreview.type === "circle") &&
+        e.evt.shiftKey
+      ) {
         const dx = x2 - x1;
         const dy = y2 - y1;
         const mag = Math.max(Math.abs(dx), Math.abs(dy));
@@ -349,7 +383,6 @@ const InfiniteCanvas: React.FC = () => {
     }
   };
 
-
   const handleTouchEnd = (e: KonvaEventObject<TouchEvent>) => {
     const nativeEvent = e.evt;
     if (!nativeEvent.touches || nativeEvent.touches.length < 2) {
@@ -369,7 +402,10 @@ const InfiniteCanvas: React.FC = () => {
   }, []);
 
   return (
-    <div>
+    <div
+      style={{ width: "100vw", height: "100vh", position: "relative" }}
+      onClick={handleDivClick}
+    >
       <Toolbar
         activeTool={activeTool}
         setTool={setActiveTool}
@@ -404,7 +440,7 @@ const InfiniteCanvas: React.FC = () => {
         x={stagePos.x}
         y={stagePos.y}
         onWheel={handleWheel}
-        onPointerDown={handlePointerDown}
+        onPointerDown={activeTool === "text" ? undefined : handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}
         onPointerUp={handlePointerUp}
@@ -424,6 +460,7 @@ const InfiniteCanvas: React.FC = () => {
             : "default",
         }}
       >
+        {/* Shapes Layer */}
         <Layer>
           {lines.map((shape, i) => {
             switch (shape.type) {
@@ -550,7 +587,74 @@ const InfiniteCanvas: React.FC = () => {
             />
           )}
         </Layer>
+        {/* Textboxes Layer */}
+        <Layer>
+          {textboxes.map(tb =>
+            tb.isEditing ? (
+              null
+            ) : (
+              <Text
+                key={tb.id}
+                x={tb.x}
+                y={tb.y}
+                text={tb.text}
+                fontSize={tb.fontSize}
+                fill={tb.color}
+                draggable
+                onClick={() => {
+                  setTextboxes(boxes =>
+                    boxes.map(b =>
+                      b.id === tb.id ? { ...b, isEditing: true } : b
+                    )
+                  );
+                  setEditingTextboxId(tb.id);
+                }}
+              />
+            )
+          )}
+        </Layer>
       </Stage>
+      {textboxes.map(tb =>
+        tb.isEditing ? (
+          <input
+            key={tb.id}
+            style={{
+              position: "absolute",
+              left: tb.x * stageScale + stagePos.x,
+              top: tb.y * stageScale + stagePos.y,
+              fontSize: tb.fontSize,
+              color: tb.color
+            }}
+            value={tb.text}
+            autoFocus
+            onChange={e => {
+              setTextboxes(boxes =>
+                boxes.map(b =>
+                  b.id === tb.id ? { ...b, text: e.target.value } : b
+                )
+              );
+            }}
+            onBlur={() => {
+              setTextboxes(boxes =>
+                boxes.map(b =>
+                  b.id === tb.id ? { ...b, isEditing: false } : b
+                )
+              );
+              setEditingTextboxId(null);
+            }}
+            onKeyDown={e => {
+              if (e.key === "Enter") {
+                setTextboxes(boxes =>
+                  boxes.map(b =>
+                    b.id === tb.id ? { ...b, isEditing: false } : b
+                  )
+                );
+                setEditingTextboxId(null);
+              }
+            }}
+          />
+        ) : null
+      )}
     </div>
   );
 };
