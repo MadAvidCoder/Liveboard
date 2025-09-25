@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Stage, Layer, Line, Circle, Arrow, Rect, Ellipse, Text } from "react-konva";
 import Toolbar from "./Toolbar";
+import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
 
@@ -26,6 +27,8 @@ type Textbox = {
 
 const INITIAL_SCALE = 1;
 
+const clamp = (min: number, value: number, max: number) => Math.max(min, Math.min(value, max));
+
 function distToSegment(p: { x: number, y: number }, v: { x: number, y: number }, w: { x: number, y: number }) {
   const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
   if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
@@ -43,6 +46,17 @@ function isLineErased(line: Shape, eraserPoint: { x: number, y: number }, radius
   }
   return false;
 }
+
+function getTextWidth(text: string, fontSize: number, fontFamily: string) {
+  const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return 0;
+  ctx.font = `${fontSize}px ${fontFamily}`;
+  return ctx.measureText(text || "M").width + 6;
+}
+getTextWidth.canvas = null as HTMLCanvasElement | null;
+
+const CANVAS_FONT = "Inter, SF Pro Display, Segoe UI, Roboto, Arial, sans-serif";
 
 const InfiniteCanvas: React.FC = () => {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
@@ -85,15 +99,63 @@ const InfiniteCanvas: React.FC = () => {
     distance: number
   } | null>(null);
 
-  // DOM click for placing textboxes
+  const inputRefs = useRef<{ [id: string]: HTMLInputElement | null }>({});
+  const [inputWidths, setInputWidths] = useState<{ [id: string]: number }>({});
+
+  useEffect(() => {
+    textboxes.forEach(tb => {
+      if (tb.isEditing) {
+        const width = getTextWidth(tb.text, tb.fontSize * stageScale, CANVAS_FONT);
+        setInputWidths(w => ({ ...w, [tb.id]: width }));
+      }
+    });
+  }, [textboxes, stageScale]);
+
+  useEffect(() => {
+    if (editingTextboxId) {
+      document.body.classList.add('noscroll');
+      document.documentElement.classList.add('noscroll');
+      window.scrollTo(0, 0);
+    } else {
+      document.body.classList.remove('noscroll');
+      document.documentElement.classList.remove('noscroll');
+      window.scrollTo(0, 0);
+    }
+    return () => {
+      document.body.classList.remove('noscroll');
+      document.documentElement.classList.remove('noscroll');
+      window.scrollTo(0, 0);
+    };
+  }, [editingTextboxId]);
+
+  useEffect(() => {
+    if (!editingTextboxId) return;
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener("scroll", preventScroll, true);
+    return () => {
+      window.removeEventListener("scroll", preventScroll, true);
+    };
+  }, [editingTextboxId]);
+
+  const resetScroll = () => {
+    window.scrollTo(0, 0);
+    setTimeout(() => window.scrollTo(0, 0), 1);
+  };
+
   const handleDivClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     if (activeTool !== "text") return;
     if ((e.target as HTMLElement).tagName === "INPUT") return;
     const stageContainer = (stageRef.current as any)?.container();
     if (!stageContainer || !stageContainer.contains(e.target as Node)) return;
     const boundingRect = stageContainer.getBoundingClientRect();
-    const x = (e.clientX - boundingRect.left - stagePos.x) / stageScale;
-    const y = (e.clientY - boundingRect.top - stagePos.y) / stageScale;
+
+    const screenX = e.clientX - boundingRect.left;
+    const screenY = e.clientY - boundingRect.top;
+    const x = (screenX - stagePos.x) / stageScale;
+    const y = (screenY - stagePos.y) / stageScale;
+    
     const id = Math.random().toString(36).substr(2, 9);
     setTextboxes(textboxes => [
       ...textboxes,
@@ -109,6 +171,11 @@ const InfiniteCanvas: React.FC = () => {
     ]);
     setEditingTextboxId(id);
   };
+
+  const toWorld = (pos: { x: number; y: number }) => ({
+    x: (pos.x - stagePos.x) / stageScale,
+    y: (pos.y - stagePos.y) / stageScale,
+  });
 
   const undo = () => {
     const action: string | undefined = undoBuffer.pop();
@@ -171,14 +238,15 @@ const InfiniteCanvas: React.FC = () => {
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
+    const pos = stageRef.current?.getPointerPosition();
+    if (!pos) return;
+    const { x, y } = toWorld(pos);
     if (activeTool === "pen") {
       isDrawing.current = true;
       drawPointerId.current = e.evt.pointerId;
-      const pos = stageRef.current?.getPointerPosition();
-      if (!pos) return;
       setLines(lines => [
         ...lines,
-        { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth, type: "line" }
+        { points: [x, y], color: currentColor, strokeWidth: currentStrokeWidth, type: "line" }
       ]);
       setRedoBuffer([]);
       setRedoEraseBuffer([]);
@@ -187,10 +255,8 @@ const InfiniteCanvas: React.FC = () => {
     } else if (activeTool === "shape") {
       isDrawing.current = true;
       drawPointerId.current = e.evt.pointerId;
-      const pos = stageRef.current?.getPointerPosition();
-      if (!pos) return;
       setShapePreview({
-        points: [pos.x, pos.y, pos.x, pos.y],
+        points: [x, y, x, y],
         color: currentColor,
         strokeWidth: currentStrokeWidth,
         type: currentShape
@@ -221,15 +287,17 @@ const InfiniteCanvas: React.FC = () => {
 
     if (!isDrawing.current || drawPointerId.current !== e.evt.pointerId) return;
 
+    const { x, y } = toWorld(pos);
+
     if (activeTool === "eraser") {
       const prevLinesSnapshot = lines;
       const erasedLines = prevLinesSnapshot.filter(line =>
-        isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
+        isLineErased(line, { x: x, y: y }, eraserRadius, stageScale)
       );
       if (erasedLines.length > 0) {
         setLines(prevLines =>
           prevLines.filter(line =>
-            !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
+            !isLineErased(line, { x: x, y: y }, eraserRadius, stageScale)
           )
         );
         setEraseBuffer(prev => [...prev, ...erasedLines]);
@@ -244,7 +312,7 @@ const InfiniteCanvas: React.FC = () => {
         if (!lastLine) return lines;
         lastLine = {
           ...lastLine,
-          points: lastLine.points.concat([pos.x, pos.y]),
+          points: lastLine.points.concat([x, y]),
           color: currentColor,
           strokeWidth: currentStrokeWidth
         };
@@ -255,8 +323,8 @@ const InfiniteCanvas: React.FC = () => {
       setUndoneLines([]);
     } else if (activeTool === "shape" && shapePreview) {
       const [x1, y1] = shapePreview.points;
-      let x2 = pos.x;
-      let y2 = pos.y;
+      let x2 = x;
+      let y2 = y;
       if (
         (shapePreview.type === "rectangle" || shapePreview.type === "circle") &&
         e.evt.shiftKey
@@ -460,7 +528,6 @@ const InfiniteCanvas: React.FC = () => {
             : "default",
         }}
       >
-        {/* Shapes Layer */}
         <Layer>
           {lines.map((shape, i) => {
             switch (shape.type) {
@@ -587,7 +654,6 @@ const InfiniteCanvas: React.FC = () => {
             />
           )}
         </Layer>
-        {/* Textboxes Layer */}
         <Layer>
           {textboxes.map(tb =>
             tb.isEditing ? (
@@ -600,6 +666,7 @@ const InfiniteCanvas: React.FC = () => {
                 text={tb.text}
                 fontSize={tb.fontSize}
                 fill={tb.color}
+                fontFamily={CANVAS_FONT}
                 draggable
                 onClick={() => {
                   setTextboxes(boxes =>
@@ -618,21 +685,42 @@ const InfiniteCanvas: React.FC = () => {
         tb.isEditing ? (
           <input
             key={tb.id}
+            ref={el => { inputRefs.current[tb.id] = el; }}
+            className="canvas-textbox-input"
             style={{
-              position: "absolute",
+              position: "fixed",
               left: tb.x * stageScale + stagePos.x,
-              top: tb.y * stageScale + stagePos.y,
-              fontSize: tb.fontSize,
-              color: tb.color
+              top: tb.y * stageScale + stagePos.y - 7 * stageScale,
+              fontSize: tb.fontSize * stageScale,
+              color: tb.color,
+              fontFamily: CANVAS_FONT,
+              width: inputWidths[tb.id] || 24,
+              minWidth: 12,
+              background: "none",
+              border: "none",
+              outline: "none",
+              boxShadow: "none",
+              padding: 0,
+              lineHeight: 1,
+              zIndex: 10
             }}
             value={tb.text}
             autoFocus
+            spellCheck={false}
+            onFocus={e => {
+              e.target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
+              resetScroll();
+            }}
             onChange={e => {
               setTextboxes(boxes =>
                 boxes.map(b =>
                   b.id === tb.id ? { ...b, text: e.target.value } : b
                 )
               );
+              setInputWidths(w => ({
+                ...w,
+                [tb.id]: getTextWidth(e.target.value, tb.fontSize * stageScale, CANVAS_FONT)
+              }));
             }}
             onBlur={() => {
               setTextboxes(boxes =>
@@ -641,6 +729,7 @@ const InfiniteCanvas: React.FC = () => {
                 )
               );
               setEditingTextboxId(null);
+              resetScroll();
             }}
             onKeyDown={e => {
               if (e.key === "Enter") {
@@ -650,6 +739,7 @@ const InfiniteCanvas: React.FC = () => {
                   )
                 );
                 setEditingTextboxId(null);
+                resetScroll();
               }
             }}
           />
