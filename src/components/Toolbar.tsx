@@ -65,18 +65,29 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
   }, [showPenOptions, showShapeOptions]);
 
   const handlePenClick = () => {
+    if (activeTool === "pen") {
+      setShowPenOptions((open) => !open);
+      return;
+    } else {
     setTool("pen");
-    setShowPenOptions((open) => !open);
+    setShowPenOptions(true);
+    }
   };
 
   const handleShapeClick = () => {
-    setTool("shape");
-    setShowShapeOptions((open) => !open);
+    if (activeTool === "shape") {
+      setShowShapeOptions((open) => !open);
+      return;
+    } else {
+      setTool("shape");
+      setShowShapeOptions(true);
+    }
   }
 
   const handleToolClick = (tool: Tool) => {
     setTool(tool);
     setShowPenOptions(false);
+    setShowShapeOptions(false);
   }
 
   useLayoutEffect(() => {
