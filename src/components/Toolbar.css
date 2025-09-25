@@ -32,7 +32,8 @@
 }
 
 .pen-subtoolbar,
-.shape-subtoolbar {
+.shape-subtoolbar,
+.text-subtoolbar {
   position: fixed;
   background: var(--surface-glass);
   backdrop-filter: blur(12px) saturate(160%);
@@ -52,7 +53,7 @@
 }
 
 .pen-colors, .pen-thicknesses,
-.shapes, .shape-colors {
+.shapes, .shape-colors, .sizes, .text-colors {
   display: flex;
   gap: 8px;
 }

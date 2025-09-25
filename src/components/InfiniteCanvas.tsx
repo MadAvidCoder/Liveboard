@@ -27,8 +27,6 @@ type Textbox = {
 
 const INITIAL_SCALE = 1;
 
-const clamp = (min: number, value: number, max: number) => Math.max(min, Math.min(value, max));
-
 function distToSegment(p: { x: number, y: number }, v: { x: number, y: number }, w: { x: number, y: number }) {
   const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
   if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
@@ -71,6 +69,7 @@ const InfiniteCanvas: React.FC = () => {
   const [currentShape, setCurrentShape] = useState<ShapeType>("line");
   const [shapePreview, setShapePreview] = useState<null | { points: number[], color: string, strokeWidth: number, type: ShapeType }>(null);
 
+  const [currentTextFontSize, setCurrentTextFontSize] = useState(24);
   const [textboxes, setTextboxes] = useState<Textbox[]>([]);
   const [editingTextboxId, setEditingTextboxId] = useState<string | null>(null);
 
@@ -164,7 +163,7 @@ const InfiniteCanvas: React.FC = () => {
         x,
         y,
         text: "",
-        fontSize: 24,
+        fontSize: currentTextFontSize,
         color: currentColor,
         isEditing: true,
       }
@@ -483,6 +482,8 @@ const InfiniteCanvas: React.FC = () => {
         setPenThickness={setCurrentStrokeWidth}
         selectedShape={currentShape}
         setSelectedShape={setCurrentShape}
+        textFontSize={currentTextFontSize}
+        setTextFontSize={setCurrentTextFontSize}
         undo={undo}
         redo={redo}
       />

@@ -7,6 +7,7 @@ import { FaMinus, FaArrowRight } from "react-icons/fa6";
 
 const COLORS = ["#222", "#4f8cff", "#e74c3c", "#2ecc40", "#f1c40f"];
 const THICKNESSES = [2, 4, 6, 8, 12];
+const FONT_SIZES = [14, 18, 24, 32, 40, 48, 64];
 
 const shapeOptions = [
   { key: "line", icon: FaMinus, label: "Line" },
@@ -24,11 +25,13 @@ interface ToolbarProps {
   setPenThickness: (thickness: number) => void;
   selectedShape: ShapeType;
   setSelectedShape: (shape: ShapeType) => void;
+  textFontSize: number;
+  setTextFontSize: (size: number) => void;
   undo: () => void;
   redo: () => void;
 }
 
-const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, undo, redo }: ToolbarProps) => {
+const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, undo, redo }: ToolbarProps) => {
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [subToolbarPos, setSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
   const penButtonRef = useRef<HTMLButtonElement>(null);
@@ -38,6 +41,11 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
   const shapeButtonRef = useRef<HTMLButtonElement>(null);
   const shapeSubToolbarRef = useRef<HTMLDivElement>(null);
   const [shapeSubToolbarPos, setShapeSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
+
+  const [showTextOptions, setShowTextOptions] = useState(false);
+  const textButtonRef = useRef<HTMLButtonElement>(null);
+  const textSubToolbarRef = useRef<HTMLDivElement>(null);
+  const [textSubToolbarPos, setTextSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
 
   useEffect(() => {
     function handleClickOutside(event: PointerEvent) {
@@ -59,10 +67,19 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
       ) {
         setShowShapeOptions(false);
       }
+      if (
+        showTextOptions &&
+        textButtonRef.current &&
+        !textButtonRef.current.contains(event.target as Node) &&
+        textSubToolbarRef.current &&
+        !textSubToolbarRef.current.contains(event.target as Node)
+      ) {
+        setShowTextOptions(false);
+      }
     }
     document.addEventListener("pointerdown", handleClickOutside);
     return () => document.removeEventListener("pointerdown", handleClickOutside);
-  }, [showPenOptions, showShapeOptions]);
+  }, [showPenOptions, showShapeOptions, showTextOptions]);
 
   const handlePenClick = () => {
     if (activeTool === "pen") {
@@ -81,6 +98,16 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     } else {
       setTool("shape");
       setShowShapeOptions(true);
+    }
+  }
+
+  const handleTextClick = () => {
+    if (activeTool === "text") {
+      setShowTextOptions((open) => !open);
+      return;
+    } else {
+      setTool("text");
+      setShowTextOptions(true);
     }
   }
 
@@ -110,6 +137,16 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
   }, [showShapeOptions]);
 
+  useLayoutEffect(() => {
+    if (showTextOptions && textButtonRef.current) {
+      const rect = textButtonRef.current.getBoundingClientRect();
+      setTextSubToolbarPos({
+        top: rect.bottom + 12,
+        left: rect.left + rect.width / 2
+      });
+    }
+  }, [showTextOptions]);
+
   return (
     <>
       <nav className="toolbar" aria-label="Canvas tools">
@@ -137,9 +174,10 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
           {FaRegCircle({size: 18})}
         </button>
         <button
+          ref={textButtonRef}
           className={`toolbar-btn${activeTool === "text" ? " selected" : ""}`}
           aria-label="Draw text"
-          onClick={() => handleToolClick("text")}
+          onClick={() => handleTextClick()}
         >
           {FaFont({size: 18})}
         </button>
@@ -241,6 +279,47 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 onClick={() => setPenColor(color)}
               />
             ))}
+          </div>
+        </nav>
+      )}
+      {activeTool === "text" && showTextOptions && (
+        <nav
+          className="text-subtoolbar"
+          ref={textSubToolbarRef}
+          style={{
+            position: "fixed",
+            top: `${textSubToolbarPos.top}px`,
+            left: `${textSubToolbarPos.left}px`,
+            transform: "translateX(-50%)"
+          }}
+        >
+          <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:3}}>
+            <label style={{fontSize:13, marginBottom:0}}>Font size</label>
+            <div style={{display:"flex", alignItems:"center", gap:8}}>
+              <input
+                type="range"
+                min={14}
+                max={64}
+                step={1}
+                value={textFontSize}
+                onChange={e => setTextFontSize(Number(e.target.value))}
+                style={{width: 110}}
+              />
+              <span style={{fontSize:14, minWidth: 28, textAlign: "right"}}>{textFontSize}px</span>
+            </div>
+            <div className="text-colors" style={{marginTop:12}}>
+              {COLORS.map((color) => (
+                <button
+                  key={color}
+                  className="color-btn"
+                  style={{
+                    background: color,
+                    border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                  }}
+                  onClick={() => setPenColor(color)}
+                />
+              ))}
+            </div>
           </div>
         </nav>
       )}
