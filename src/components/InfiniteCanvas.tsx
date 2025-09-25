@@ -691,7 +691,7 @@ const InfiniteCanvas: React.FC = () => {
             style={{
               position: "fixed",
               left: tb.x * stageScale + stagePos.x,
-              top: tb.y * stageScale + stagePos.y - 7 * stageScale,
+              top: tb.y * stageScale + stagePos.y - 7 / 24 * tb.fontSize * stageScale,
               fontSize: tb.fontSize * stageScale,
               color: tb.color,
               fontFamily: CANVAS_FONT,
