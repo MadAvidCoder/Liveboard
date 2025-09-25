@@ -60,11 +60,21 @@ const InfiniteCanvas: React.FC = () => {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const [lines, setLines] = useState<Shape[]>([]);
+
+  type UndoAction =
+  | { type: "draw" }
+  | { type: "erase" }
+  | { type: "addText"; textbox: Textbox }
+  | { type: "editText"; id: string; from: string; to: string }
+  | { type: "removeText"; textbox: Textbox };
+
   const [undoneLines, setUndoneLines] = useState<Shape[]>([]);
-  const [undoBuffer, setUndoBuffer] = useState<string[]>([]);
+  const [undoBuffer, setUndoBuffer] = useState<UndoAction[]>([]);
+  const [redoBuffer, setRedoBuffer] = useState<UndoAction[]>([]);
   const [eraseBuffer, setEraseBuffer] = useState<Shape[]>([]);
-  const [redoBuffer, setRedoBuffer] = useState<string[]>([]);
   const [redoEraseBuffer, setRedoEraseBuffer] = useState<Shape[]>([]);
+
+  const [editingInitialText, setEditingInitialText] = useState<string | null>(null);
 
   const [currentShape, setCurrentShape] = useState<ShapeType>("line");
   const [shapePreview, setShapePreview] = useState<null | { points: number[], color: string, strokeWidth: number, type: ShapeType }>(null);
@@ -156,19 +166,20 @@ const InfiniteCanvas: React.FC = () => {
     const y = (screenY - stagePos.y) / stageScale;
     
     const id = Math.random().toString(36).substr(2, 9);
-    setTextboxes(textboxes => [
-      ...textboxes,
-      {
-        id,
-        x,
-        y,
-        text: "",
-        fontSize: currentTextFontSize,
-        color: currentColor,
-        isEditing: true,
-      }
-    ]);
+    const newTextbox: Textbox = {
+      id,
+      x,
+      y,
+      text: "",
+      fontSize: currentTextFontSize,
+      color: currentColor,
+      isEditing: true,
+    };
+    setTextboxes(textboxes => [...textboxes, newTextbox]);
     setEditingTextboxId(id);
+
+    setUndoBuffer(prev => [...prev, { type: "addText", textbox: newTextbox }]);
+    setRedoBuffer([]);
   };
 
   const toWorld = (pos: { x: number; y: number }) => ({
@@ -177,52 +188,85 @@ const InfiniteCanvas: React.FC = () => {
   });
 
   const undo = () => {
-    const action: string | undefined = undoBuffer.pop();
+    const action = undoBuffer.pop();
     if (!action) return;
     setUndoBuffer([...undoBuffer]);
-    if (action === "erase") {
-      const lastErased: Shape | undefined = eraseBuffer.pop();
-      if (lastErased) {
-        setLines(prevLines => [...prevLines, lastErased]);
-        setRedoBuffer(prev => [...prev, "erase"]);
-        setRedoEraseBuffer(prev => [...prev, lastErased]);
-      }
-      setEraseBuffer([...eraseBuffer]);
-    } else if (action === "draw") {
-      if (lines.length === 0) return;
-      setUndoneLines(prevUndoneLines => {
-        const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
-        if (updatedUndoneLines.length > 50) {
-          updatedUndoneLines.slice(1);
+    switch (action.type) {
+      case "erase":
+        const lastErased: Shape | undefined = eraseBuffer.pop();
+        if (lastErased) {
+          setLines(prevLines => [...prevLines, lastErased]);
+          setRedoBuffer(prev => [...prev, { type: "erase" }]);
+          setRedoEraseBuffer(prev => [...prev, lastErased]);
         }
-        return updatedUndoneLines;
-      });
-      setRedoBuffer(prev => [...prev, "draw"]);
-      setLines(prev => {
-        const removed = prev[prev.length - 1];
-        return prev.slice(0, -1);
-      });
+        setEraseBuffer([...eraseBuffer]);
+        break
+      case "draw":
+        if (lines.length === 0) return;
+        setUndoneLines(prevUndoneLines => {
+          const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
+          if (updatedUndoneLines.length > 50) {
+            updatedUndoneLines.slice(1);
+          }
+          return updatedUndoneLines;
+        });
+        setRedoBuffer(prev => [...prev, { type: "draw" }]);
+        setLines(prev => {
+          const removed = prev[prev.length - 1];
+          return prev.slice(0, -1);
+        });
+        break;
+      case "addText":
+        setTextboxes(tbs => tbs.filter(tb => tb.id !== action.textbox.id));
+        setRedoBuffer(rb => [...rb, action]);
+        break;
+      case "editText":
+        setTextboxes(tbs => tbs.map(tb =>
+          tb.id === action.id ? { ...tb, text: action.from } : tb
+        ));
+        setRedoBuffer(rb => [...rb, action]);
+        break;
+      case "removeText":
+        setTextboxes(tbs => [...tbs, action.textbox]);
+        setRedoBuffer(rb => [...rb, action]);
+        break;
     }
   };
 
   const redo = () => {
-    const action = redoBuffer[redoBuffer.length - 1];
+    const action = redoBuffer.pop();
     if (!action) return;
-    setRedoBuffer(prev => prev.slice(0, -1));
-
-    if (action === "erase") {
-      const lastErased = redoEraseBuffer[redoEraseBuffer.length - 1];
-      if (!lastErased) return;
-      setRedoEraseBuffer(prev => prev.slice(0, -1));
-      setLines(prev => prev.filter(line => line !== lastErased));
-      setUndoBuffer(prev => [...prev, "erase"]);
-      setEraseBuffer(prev => [...prev, lastErased]);
-    } else if (action === "draw") {
-      const lastDrawn = undoneLines[undoneLines.length - 1];
-      if (!lastDrawn) return;
-      setUndoneLines(prev => prev.slice(0, -1));
-      setLines(prev => [...prev, lastDrawn]);
-      setUndoBuffer(prev => [...prev, "draw"]);
+    setRedoBuffer([...redoBuffer]);
+    switch (action.type) {
+      case "erase":
+        const lastErased = redoEraseBuffer[redoEraseBuffer.length - 1];
+        if (!lastErased) return;
+        setRedoEraseBuffer(prev => prev.slice(0, -1));
+        setLines(prev => prev.filter(line => line !== lastErased));
+        setUndoBuffer(prev => [...prev, { type: "erase" }]);
+        setEraseBuffer(prev => [...prev, lastErased]);
+        break;
+      case "draw":
+        const lastDrawn = undoneLines[undoneLines.length - 1];
+        if (!lastDrawn) return;
+        setUndoneLines(prev => prev.slice(0, -1));
+        setLines(prev => [...prev, lastDrawn]);
+        setUndoBuffer(prev => [...prev, { type: "draw" }]);
+        break;
+      case "addText":
+        setTextboxes(tbs => [...tbs, action.textbox]);
+        setUndoBuffer(ub => [...ub, action]);
+        break;
+      case "editText":
+        setTextboxes(tbs => tbs.map(tb =>
+          tb.id === action.id ? { ...tb, text: action.to } : tb
+        ));
+        setUndoBuffer(ub => [...ub, action]);
+        break;
+      case "removeText":
+        setTextboxes(tbs => tbs.filter(tb => tb.id !== action.textbox.id));
+        setUndoBuffer(ub => [...ub, action]);
+        break;
     }
   };
 
@@ -250,7 +294,7 @@ const InfiniteCanvas: React.FC = () => {
       setRedoBuffer([]);
       setRedoEraseBuffer([]);
       setUndoneLines([]);
-      setUndoBuffer(prev => [...prev, "draw"]);
+      setUndoBuffer(prev => [...prev, { type: "draw" }]);
     } else if (activeTool === "shape") {
       isDrawing.current = true;
       drawPointerId.current = e.evt.pointerId;
@@ -300,7 +344,7 @@ const InfiniteCanvas: React.FC = () => {
           )
         );
         setEraseBuffer(prev => [...prev, ...erasedLines]);
-        setUndoBuffer(prev => [...prev, ...erasedLines.map(() => "erase")]);
+        setUndoBuffer(prev => [...prev, ...erasedLines.map((): UndoAction => ({ type: "erase" }))]);
         setRedoBuffer([]);
         setRedoEraseBuffer([]);
         setUndoneLines([]);
@@ -357,7 +401,7 @@ const InfiniteCanvas: React.FC = () => {
         },
       ]);
       setShapePreview(null);
-      setUndoBuffer(prev => [...prev, "draw"]);
+      setUndoBuffer(prev => [...prev, { type: "draw" }]);
       setRedoBuffer([]);
     }
     setIsPanning(false);
@@ -670,6 +714,7 @@ const InfiniteCanvas: React.FC = () => {
                 fontFamily={CANVAS_FONT}
                 draggable
                 onClick={() => {
+                  setEditingInitialText(tb.text);
                   setTextboxes(boxes =>
                     boxes.map(b =>
                       b.id === tb.id ? { ...b, isEditing: true } : b
@@ -731,6 +776,17 @@ const InfiniteCanvas: React.FC = () => {
               );
               setEditingTextboxId(null);
               resetScroll();
+
+              if (editingInitialText !== null && editingInitialText !== tb.text) {
+                setUndoBuffer(prev => [...prev, {
+                  type: "editText",
+                  id: tb.id,
+                  from: editingInitialText,
+                  to: tb.text,
+                }]);
+                setRedoBuffer([]);
+              }
+              setEditingInitialText(null);
             }}
             onKeyDown={e => {
               if (e.key === "Enter") {
@@ -741,6 +797,16 @@ const InfiniteCanvas: React.FC = () => {
                 );
                 setEditingTextboxId(null);
                 resetScroll();
+                if (editingInitialText !== null && editingInitialText !== tb.text) {
+                  setUndoBuffer(prev => [...prev, {
+                    type: "editText",
+                    id: tb.id,
+                    from: editingInitialText,
+                    to: tb.text,
+                  }]);
+                  setRedoBuffer([]);
+                }
+                setEditingInitialText(null);
               }
             }}
           />
