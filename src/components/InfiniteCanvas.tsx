@@ -631,7 +631,7 @@ const InfiniteCanvas: React.FC = () => {
                     points={shape.points}
                     stroke={shape.color}
                     strokeWidth={shape.strokeWidth}
-                    tension={0}
+                    tension={0.5}
                     lineCap="round"
                     lineJoin="round"
                     globalCompositeOperation="source-over"
