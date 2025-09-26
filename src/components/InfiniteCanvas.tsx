@@ -283,7 +283,7 @@ const InfiniteCanvas: React.FC = () => {
       (e.evt.button === 2 ||
         e.evt.ctrlKey ||
         e.evt.metaKey ||
-        e.evt.altKey)
+        e.evt.altKey) && !e.evt.shiftKey
     ) {
       setIsPanning(true);
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
