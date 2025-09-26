@@ -85,30 +85,27 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     if (activeTool === "pen") {
       setShowPenOptions((open) => !open);
       return;
-    } else {
+    }
     setTool("pen");
     setShowPenOptions(true);
-    }
   };
 
   const handleShapeClick = () => {
     if (activeTool === "shape") {
       setShowShapeOptions((open) => !open);
       return;
-    } else {
-      setTool("shape");
-      setShowShapeOptions(true);
     }
+    setTool("shape");
+    setShowShapeOptions(true);
   }
 
   const handleTextClick = () => {
     if (activeTool === "text") {
       setShowTextOptions((open) => !open);
       return;
-    } else {
-      setTool("text");
-      setShowTextOptions(true);
     }
+    setTool("text");
+    setShowTextOptions(true);
   }
 
   const handleToolClick = (tool: Tool) => {
