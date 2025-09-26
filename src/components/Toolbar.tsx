@@ -97,7 +97,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
     setTool("shape");
     setShowShapeOptions(true);
-  }
+  };
 
   const handleTextClick = () => {
     if (activeTool === "text") {
@@ -106,13 +106,13 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
     setTool("text");
     setShowTextOptions(true);
-  }
+  };
 
   const handleToolClick = (tool: Tool) => {
     setTool(tool);
     setShowPenOptions(false);
     setShowShapeOptions(false);
-  }
+  };
 
   useLayoutEffect(() => {
     if (showPenOptions && penButtonRef.current) {
