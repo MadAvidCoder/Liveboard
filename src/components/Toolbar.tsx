@@ -7,7 +7,6 @@ import { FaMinus, FaArrowRight } from "react-icons/fa6";
 
 const COLORS = ["#222", "#4f8cff", "#e74c3c", "#2ecc40", "#f1c40f"];
 const THICKNESSES = [2, 4, 6, 8, 12];
-const FONT_SIZES = [14, 18, 24, 32, 40, 48, 64];
 
 const shapeOptions = [
   { key: "line", icon: FaMinus, label: "Line" },
