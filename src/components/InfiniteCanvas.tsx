@@ -1,16 +1,30 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Stage, Layer, Line, Circle } from "react-konva";
+import { Stage, Layer, Line, Circle, Arrow, Rect, Ellipse, Text } from "react-konva";
 import Toolbar from "./Toolbar";
+import CanvasTextboxInput from "./CanvasTextboxInput";
+import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
 
-type LineType = {
+export type ShapeType = "line" | "arrow" | "circle" | "rectangle";
+type Shape = {
   points: number[],
   color: string,
-  strokeWidth: number
+  strokeWidth: number,
+  type: ShapeType
 };
 
-export type Tool = "pen" | "eraser" | "shape" | null;
+export type Tool = "pen" | "eraser" | "shape" | "text" | null;
+
+type Textbox = {
+  id: string;
+  x: number;
+  y: number;
+  text: string;
+  fontSize: number;
+  color: string;
+  isEditing: boolean;
+};
 
 const INITIAL_SCALE = 1;
 
@@ -22,7 +36,7 @@ function distToSegment(p: { x: number, y: number }, v: { x: number, y: number },
   return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
 }
 
-function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, radius: number, stageScale: number = 1) {
+function isLineErased(line: Shape, eraserPoint: { x: number, y: number }, radius: number, stageScale: number = 1) {
   const pts = line.points;
   for (let i = 0; i < pts.length - 2; i += 2) {
     const x1 = pts[i], y1 = pts[i + 1];
@@ -32,15 +46,43 @@ function isLineErased(line: LineType, eraserPoint: { x: number, y: number }, rad
   return false;
 }
 
+function getTextWidth(text: string, fontSize: number, fontFamily: string) {
+  const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return 0;
+  ctx.font = `${fontSize}px ${fontFamily}`;
+  return ctx.measureText(text || "M").width + 6;
+}
+getTextWidth.canvas = null as HTMLCanvasElement | null;
+
+const CANVAS_FONT = "Inter, SF Pro Display, Segoe UI, Roboto, Arial, sans-serif";
+
 const InfiniteCanvas: React.FC = () => {
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
-  const [lines, setLines] = useState<LineType[]>([]);
-  const [undoneLines, setUndoneLines] = useState<LineType[]>([]);
-  const [undoBuffer, setUndoBuffer] = useState<string[]>([]);
-  const [eraseBuffer, setEraseBuffer] = useState<LineType[]>([]);
-  const [redoBuffer, setRedoBuffer] = useState<string[]>([]);
-  const [redoEraseBuffer, setRedoEraseBuffer] = useState<LineType[]>([]);
+  const [lines, setLines] = useState<Shape[]>([]);
+
+  type UndoAction =
+  | { type: "draw" }
+  | { type: "erase" }
+  | { type: "addText"; textbox: Textbox }
+  | { type: "editText"; id: string; from: string; to: string }
+  | { type: "removeText"; textbox: Textbox };
+
+  const [undoneLines, setUndoneLines] = useState<Shape[]>([]);
+  const [undoBuffer, setUndoBuffer] = useState<UndoAction[]>([]);
+  const [redoBuffer, setRedoBuffer] = useState<UndoAction[]>([]);
+  const [eraseBuffer, setEraseBuffer] = useState<Shape[]>([]);
+  const [redoEraseBuffer, setRedoEraseBuffer] = useState<Shape[]>([]);
+
+  const [editingInitialText, setEditingInitialText] = useState<string | null>(null);
+
+  const [currentShape, setCurrentShape] = useState<ShapeType>("line");
+  const [shapePreview, setShapePreview] = useState<null | { points: number[], color: string, strokeWidth: number, type: ShapeType }>(null);
+
+  const [currentTextFontSize, setCurrentTextFontSize] = useState(24);
+  const [textboxes, setTextboxes] = useState<Textbox[]>([]);
+  const [editingTextboxId, setEditingTextboxId] = useState<string | null>(null);
 
   const [stageScale, setStageScale] = useState(INITIAL_SCALE);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
@@ -60,66 +102,6 @@ const InfiniteCanvas: React.FC = () => {
   const isDrawing = useRef(false);
   const drawPointerId = useRef<number | null>(null);
 
-  const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
-  const lastTouchDist = useRef<number | null>(null);
-
-  const undo = () => {
-    const action: string | undefined = undoBuffer.pop();
-    if (!action) return;
-    setUndoBuffer([...undoBuffer]);
-    if (action === "erase") {
-      const lastErased: LineType | undefined = eraseBuffer.pop();
-      if (lastErased) {
-        setLines(prevLines => [...prevLines, lastErased]);
-        setRedoBuffer(prev => [...prev, "erase"]);
-        setRedoEraseBuffer(prev => [...prev, lastErased]);
-      }
-      setEraseBuffer([...eraseBuffer]);
-    } else if (action === "draw") {
-      if (lines.length === 0) return;
-      setUndoneLines(prevUndoneLines => {
-        const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
-
-        if (updatedUndoneLines.length > 50) {
-          updatedUndoneLines.slice(1);
-        }
-
-        return updatedUndoneLines;
-      });
-      setRedoBuffer(prev => [...prev, "draw"]);
-      setLines(prev => {
-        const removed = prev[prev.length - 1];
-        return prev.slice(0, -1);
-      });
-    }
-  }
-
-  const redo = () => {
-    const action = redoBuffer[redoBuffer.length - 1];
-    setRedoBuffer(prev => prev.slice(0, -1));
-    if (!action) return;
-    setRedoBuffer([...redoBuffer]);
-
-    if (action === "erase") {
-      const lastErased = redoEraseBuffer[redoEraseBuffer.length - 1];
-      setRedoEraseBuffer(prev => prev.slice(0, -1));
-      if (lastErased) {
-        setLines(prev => prev.filter(line => line !== lastErased));
-        setUndoBuffer(prev => [...prev, "erase"]);
-        setEraseBuffer(prev => [...prev, lastErased]);
-      }
-      setRedoEraseBuffer([...redoEraseBuffer]);
-    } else if (action === "draw") {
-      const lastDrawn = undoneLines[undoneLines.length - 1];
-      setUndoneLines(prev => prev.slice(0, -1));
-      if (lastDrawn) {
-        setLines(prev => [...prev, lastDrawn]);
-        setUndoBuffer(prev => [...prev, "draw"]);
-      }
-      setUndoneLines([...undoneLines]);
-    }
-  };
-
   const initialPinch = useRef<{
     center: { x: number; y: number },
     stagePos: { x: number; y: number },
@@ -127,9 +109,173 @@ const InfiniteCanvas: React.FC = () => {
     distance: number
   } | null>(null);
 
-  const getRelativePointer = () => {
+  const inputRefs = useRef<{ [id: string]: HTMLInputElement | null }>({});
+  const [inputWidths, setInputWidths] = useState<{ [id: string]: number }>({});
+
+  const handleStageTextMouseDown = (e: any) => {
+    if (activeTool !== "text") return;
     const stage = stageRef.current;
-    return stage.getRelativePointerPosition();
+    if (!stage) return;
+
+    if (e.target && typeof e.target.getClassName === "function" && e.target.getClassName() === "Text") {
+      return;
+    }
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+    const x = (pointer.x - stagePos.x) / stageScale;
+    const y = (pointer.y - stagePos.y) / stageScale;
+    setTextboxes(prev =>
+      prev.map(tb => tb.isEditing ? { ...tb, isEditing: false } : tb)
+    );
+    setEditingTextboxId(null);
+    setEditingInitialText(null);
+    setTimeout(() => {
+      const id = crypto.randomUUID();
+      const newTextbox: Textbox = {
+        id,
+        x,
+        y,
+        text: "",
+        fontSize: currentTextFontSize,
+        color: currentColor,
+        isEditing: true,
+      };
+      setTextboxes(textboxes => textboxes.concat([newTextbox]));
+      setEditingTextboxId(id);
+      setUndoBuffer(prev => [...prev, { type: "addText", textbox: newTextbox }]);
+      setRedoBuffer([]);
+    }, 0);
+  };
+
+
+  useEffect(() => {
+    textboxes.forEach(tb => {
+      if (tb.isEditing) {
+        const width = getTextWidth(tb.text, tb.fontSize * stageScale, CANVAS_FONT);
+        setInputWidths(w => ({ ...w, [tb.id]: width }));
+      }
+    });
+  }, [textboxes, stageScale]);
+
+  useEffect(() => {
+    if (editingTextboxId) {
+      document.body.classList.add('noscroll');
+      document.documentElement.classList.add('noscroll');
+      window.scrollTo(0, 0);
+    } else {
+      document.body.classList.remove('noscroll');
+      document.documentElement.classList.remove('noscroll');
+      window.scrollTo(0, 0);
+    }
+    return () => {
+      document.body.classList.remove('noscroll');
+      document.documentElement.classList.remove('noscroll');
+      window.scrollTo(0, 0);
+    };
+  }, [editingTextboxId]);
+
+  useEffect(() => {
+    if (!editingTextboxId) return;
+    const preventScroll = (e: Event) => {
+      e.preventDefault();
+    };
+    window.addEventListener("scroll", preventScroll, true);
+    return () => {
+      window.removeEventListener("scroll", preventScroll, true);
+    };
+  }, [editingTextboxId]);
+
+  const resetScroll = () => {
+    window.scrollTo(0, 0);
+    setTimeout(() => window.scrollTo(0, 0), 1);
+  };
+
+  const toWorld = (pos: { x: number; y: number }) => ({
+    x: (pos.x - stagePos.x) / stageScale,
+    y: (pos.y - stagePos.y) / stageScale,
+  });
+
+  const undo = () => {
+    const action = undoBuffer.pop();
+    if (!action) return;
+    setUndoBuffer([...undoBuffer]);
+    switch (action.type) {
+      case "erase":
+        const lastErased: Shape | undefined = eraseBuffer.pop();
+        if (lastErased) {
+          setLines(prevLines => [...prevLines, lastErased]);
+          setRedoBuffer(prev => [...prev, { type: "erase" }]);
+          setRedoEraseBuffer(prev => [...prev, lastErased]);
+        }
+        setEraseBuffer([...eraseBuffer]);
+        break
+      case "draw":
+        if (lines.length === 0) return;
+        setUndoneLines(prevUndoneLines => {
+          const updatedUndoneLines = [...prevUndoneLines, lines[lines.length - 1]];
+          if (updatedUndoneLines.length > 50) {
+            updatedUndoneLines.slice(1);
+          }
+          return updatedUndoneLines;
+        });
+        setRedoBuffer(prev => [...prev, { type: "draw" }]);
+        setLines(prev => {
+          const removed = prev[prev.length - 1];
+          return prev.slice(0, -1);
+        });
+        break;
+      case "addText":
+        setTextboxes(tbs => tbs.filter(tb => tb.id !== action.textbox.id));
+        setRedoBuffer(rb => [...rb, action]);
+        break;
+      case "editText":
+        setTextboxes(tbs => tbs.map(tb =>
+          tb.id === action.id ? { ...tb, text: action.from } : tb
+        ));
+        setRedoBuffer(rb => [...rb, action]);
+        break;
+      case "removeText":
+        setTextboxes(tbs => [...tbs, action.textbox]);
+        setRedoBuffer(rb => [...rb, action]);
+        break;
+    }
+  };
+
+  const redo = () => {
+    const action = redoBuffer.pop();
+    if (!action) return;
+    setRedoBuffer([...redoBuffer]);
+    switch (action.type) {
+      case "erase":
+        const lastErased = redoEraseBuffer[redoEraseBuffer.length - 1];
+        if (!lastErased) return;
+        setRedoEraseBuffer(prev => prev.slice(0, -1));
+        setLines(prev => prev.filter(line => line !== lastErased));
+        setUndoBuffer(prev => [...prev, { type: "erase" }]);
+        setEraseBuffer(prev => [...prev, lastErased]);
+        break;
+      case "draw":
+        const lastDrawn = undoneLines[undoneLines.length - 1];
+        if (!lastDrawn) return;
+        setUndoneLines(prev => prev.slice(0, -1));
+        setLines(prev => [...prev, lastDrawn]);
+        setUndoBuffer(prev => [...prev, { type: "draw" }]);
+        break;
+      case "addText":
+        setTextboxes(tbs => [...tbs, action.textbox]);
+        setUndoBuffer(ub => [...ub, action]);
+        break;
+      case "editText":
+        setTextboxes(tbs => tbs.map(tb =>
+          tb.id === action.id ? { ...tb, text: action.to } : tb
+        ));
+        setUndoBuffer(ub => [...ub, action]);
+        break;
+      case "removeText":
+        setTextboxes(tbs => tbs.filter(tb => tb.id !== action.textbox.id));
+        setUndoBuffer(ub => [...ub, action]);
+        break;
+    }
   };
 
   const handlePointerDown = (e: any) => {
@@ -137,30 +283,46 @@ const InfiniteCanvas: React.FC = () => {
       (e.evt.button === 2 ||
         e.evt.ctrlKey ||
         e.evt.metaKey ||
-        e.evt.altKey ||
-        e.evt.shiftKey)
+        e.evt.altKey) && !e.evt.shiftKey
     ) {
       setIsPanning(true);
       lastPanPos.current = { x: e.evt.clientX, y: e.evt.clientY };
       return;
     }
-    isDrawing.current = true;
-    drawPointerId.current = e.evt.pointerId;
-    const pos = getRelativePointer();
+    const pos = stageRef.current?.getPointerPosition();
+    if (!pos) return;
+    const { x, y } = toWorld(pos);
     if (activeTool === "pen") {
+      isDrawing.current = true;
+      drawPointerId.current = e.evt.pointerId;
       setLines(lines => [
         ...lines,
-        { points: [pos.x, pos.y], color: currentColor, strokeWidth: currentStrokeWidth }
+        { points: [x, y], color: currentColor, strokeWidth: currentStrokeWidth, type: "line" }
       ]);
       setRedoBuffer([]);
       setRedoEraseBuffer([]);
       setUndoneLines([]);
-      setUndoBuffer(prev => [...prev, "draw"]);
+      setUndoBuffer(prev => [...prev, { type: "draw" }]);
+    } else if (activeTool === "shape") {
+      isDrawing.current = true;
+      drawPointerId.current = e.evt.pointerId;
+      setShapePreview({
+        points: [x, y, x, y],
+        color: currentColor,
+        strokeWidth: currentStrokeWidth,
+        type: currentShape
+      });
+    } else if (activeTool === "eraser") {
+      isDrawing.current = true;
+      drawPointerId.current = e.evt.pointerId;
     }
   };
 
   const handlePointerMove = (e: any) => {
-    const pos = getRelativePointer();
+    const stage = stageRef.current;
+    const pos = stage ? stage.getPointerPosition() : null;
+    if (!pos) return;
+
     setCursorPos({ x: pos.x, y: pos.y });
 
     if (isPanning) {
@@ -176,19 +338,21 @@ const InfiniteCanvas: React.FC = () => {
 
     if (!isDrawing.current || drawPointerId.current !== e.evt.pointerId) return;
 
+    const { x, y } = toWorld(pos);
+
     if (activeTool === "eraser") {
       const prevLinesSnapshot = lines;
       const erasedLines = prevLinesSnapshot.filter(line =>
-        isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
+        isLineErased(line, { x: x, y: y }, eraserRadius, stageScale)
       );
       if (erasedLines.length > 0) {
         setLines(prevLines =>
           prevLines.filter(line =>
-            !isLineErased(line, { x: pos.x, y: pos.y }, eraserRadius, stageScale)
+            !isLineErased(line, { x: x, y: y }, eraserRadius, stageScale)
           )
         );
         setEraseBuffer(prev => [...prev, ...erasedLines]);
-        setUndoBuffer(prev => [...prev, ...erasedLines.map(() => "erase")]);
+        setUndoBuffer(prev => [...prev, ...erasedLines.map((): UndoAction => ({ type: "erase" }))]);
         setRedoBuffer([]);
         setRedoEraseBuffer([]);
         setUndoneLines([]);
@@ -199,7 +363,7 @@ const InfiniteCanvas: React.FC = () => {
         if (!lastLine) return lines;
         lastLine = {
           ...lastLine,
-          points: lastLine.points.concat([pos.x, pos.y]),
+          points: lastLine.points.concat([x, y]),
           color: currentColor,
           strokeWidth: currentStrokeWidth
         };
@@ -208,6 +372,24 @@ const InfiniteCanvas: React.FC = () => {
       setRedoBuffer([]);
       setRedoEraseBuffer([]);
       setUndoneLines([]);
+    } else if (activeTool === "shape" && shapePreview) {
+      const [x1, y1] = shapePreview.points;
+      let x2 = x;
+      let y2 = y;
+      if (
+        (shapePreview.type === "rectangle" || shapePreview.type === "circle") &&
+        e.evt.shiftKey
+      ) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const mag = Math.max(Math.abs(dx), Math.abs(dy));
+        x2 = x1 + mag * Math.sign(dx || 1);
+        y2 = y1 + mag * Math.sign(dy || 1);
+      }
+      setShapePreview({
+        ...shapePreview,
+        points: [x1, y1, x2, y2]
+      });
     }
   };
 
@@ -216,9 +398,21 @@ const InfiniteCanvas: React.FC = () => {
       isDrawing.current = false;
       drawPointerId.current = null;
     }
-    if (isPanning) {
-      setIsPanning(false);
+    if (activeTool === "shape" && shapePreview) {
+      setLines(lines => [
+        ...lines,
+        {
+          points: shapePreview.points,
+          color: shapePreview.color,
+          strokeWidth: shapePreview.strokeWidth,
+          type: shapePreview.type,
+        },
+      ]);
+      setShapePreview(null);
+      setUndoBuffer(prev => [...prev, { type: "draw" }]);
+      setRedoBuffer([]);
     }
+    setIsPanning(false);
   };
 
   const handlePointerLeave = () => setCursorPos(null);
@@ -308,7 +502,6 @@ const InfiniteCanvas: React.FC = () => {
     }
   };
 
-
   const handleTouchEnd = (e: KonvaEventObject<TouchEvent>) => {
     const nativeEvent = e.evt;
     if (!nativeEvent.touches || nativeEvent.touches.length < 2) {
@@ -328,7 +521,9 @@ const InfiniteCanvas: React.FC = () => {
   }, []);
 
   return (
-    <div>
+    <div
+      style={{ width: "100vw", height: "100vh", position: "relative" }}
+    >
       <Toolbar
         activeTool={activeTool}
         setTool={setActiveTool}
@@ -336,22 +531,24 @@ const InfiniteCanvas: React.FC = () => {
         setPenColor={setCurrentColor}
         penThickness={currentStrokeWidth}
         setPenThickness={setCurrentStrokeWidth}
+        selectedShape={currentShape}
+        setSelectedShape={setCurrentShape}
+        textFontSize={currentTextFontSize}
+        setTextFontSize={setCurrentTextFontSize}
         undo={undo}
         redo={redo}
       />
-      <Layer listening={false}>
-        <DotCanvasOverlay
-          stagePos={stagePos}
-          stageScale={stageScale}
-          width={window.innerWidth}
-          height={window.innerHeight}
-          baseDotSpacing={32}
-          dotRadius={1.5}
-          color="#d8e1e4ff"
-          opacity={0.75}
-          minScreenSpacing={16}
-        />
-      </Layer>
+      <DotCanvasOverlay
+        stagePos={stagePos}
+        stageScale={stageScale}
+        width={window.innerWidth}
+        height={window.innerHeight}
+        baseDotSpacing={32}
+        dotRadius={1.5}
+        color="#d8e1e4ff"
+        opacity={0.75}
+        minScreenSpacing={16}
+      />
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
@@ -361,9 +558,10 @@ const InfiniteCanvas: React.FC = () => {
         x={stagePos.x}
         y={stagePos.y}
         onWheel={handleWheel}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
+        onMouseDown={activeTool === "text" ? handleStageTextMouseDown : undefined}
+        onPointerDown={activeTool !== "text" ? handlePointerDown : undefined}
         onPointerLeave={handlePointerLeave}
+        onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onContextMenu={e => e.evt.preventDefault()}
         onTouchStart={handleTouchStart}
@@ -382,18 +580,119 @@ const InfiniteCanvas: React.FC = () => {
         }}
       >
         <Layer>
-          {lines.map((line, i) => (
-            <Line
-              key={i}
-              points={line.points}
-              stroke={line.color}
-              strokeWidth={line.strokeWidth}
-              tension={0.5}
-              lineCap="round"
-              lineJoin="round"
-              globalCompositeOperation="source-over"
-            />
-          ))}
+          {lines.map((shape, i) => {
+            switch (shape.type) {
+              case "arrow":
+                return (
+                  <Arrow
+                    key={i}
+                    points={shape.points}
+                    stroke={shape.color}
+                    fill={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    pointerLength={16}
+                    pointerWidth={16}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation="source-over"
+                  />
+                );
+              case "rectangle":
+                return (
+                  <Rect
+                    key={i}
+                    x={Math.min(shape.points[0], shape.points[2])}
+                    y={Math.min(shape.points[1], shape.points[3])}
+                    width={Math.abs(shape.points[2] - shape.points[0])}
+                    height={Math.abs(shape.points[3] - shape.points[1])}
+                    stroke={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    globalCompositeOperation="source-over"
+                  />
+                );
+              case "circle":
+                return (
+                  <Ellipse
+                    key={i}
+                    x={(shape.points[0] + shape.points[2]) / 2}
+                    y={(shape.points[1] + shape.points[3]) / 2}
+                    radiusX={Math.abs(shape.points[2] - shape.points[0]) / 2}
+                    radiusY={Math.abs(shape.points[3] - shape.points[1]) / 2}
+                    stroke={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    globalCompositeOperation="source-over"
+                  />
+                );
+              case "line":
+              default:
+                return (
+                  <Line
+                    key={i}
+                    points={shape.points}
+                    stroke={shape.color}
+                    strokeWidth={shape.strokeWidth}
+                    tension={0.5}
+                    lineCap="round"
+                    lineJoin="round"
+                    globalCompositeOperation="source-over"
+                  />
+                );
+            }
+          })}
+          {shapePreview && activeTool === "shape" && (
+            <>
+              {shapePreview.type === "line" && (
+                <Line
+                  points={shapePreview.points}
+                  stroke={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  tension={0}
+                  lineCap="round"
+                  lineJoin="round"
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+              {shapePreview.type === "arrow" && (
+                <Arrow
+                  points={shapePreview.points}
+                  stroke={shapePreview.color}
+                  fill={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  pointerLength={16}
+                  pointerWidth={16}
+                  lineCap="round"
+                  lineJoin="round"
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+              {shapePreview.type === "rectangle" && (
+                <Rect
+                  x={Math.min(shapePreview.points[0], shapePreview.points[2])}
+                  y={Math.min(shapePreview.points[1], shapePreview.points[3])}
+                  width={Math.abs(shapePreview.points[2] - shapePreview.points[0])}
+                  height={Math.abs(shapePreview.points[3] - shapePreview.points[1])}
+                  stroke={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+              {shapePreview.type === "circle" && (
+                <Ellipse
+                  x={(shapePreview.points[0] + shapePreview.points[2]) / 2}
+                  y={(shapePreview.points[1] + shapePreview.points[3]) / 2}
+                  radiusX={Math.abs(shapePreview.points[2] - shapePreview.points[0]) / 2}
+                  radiusY={Math.abs(shapePreview.points[3] - shapePreview.points[1]) / 2}
+                  stroke={shapePreview.color}
+                  strokeWidth={shapePreview.strokeWidth}
+                  globalCompositeOperation="source-over"
+                  dash={[10, 5]}
+                />
+              )}
+            </>
+          )}
           {activeTool === "eraser" && cursorPos && (
             <Circle
               x={cursorPos.x}
@@ -406,7 +705,125 @@ const InfiniteCanvas: React.FC = () => {
             />
           )}
         </Layer>
+        <Layer>
+          {textboxes.map(tb =>
+            tb.isEditing ? (
+              null
+            ) : (
+              <Text
+                key={tb.id}
+                x={tb.x}
+                y={tb.y}
+                text={tb.text}
+                fontSize={tb.fontSize}
+                fill={tb.color}
+                fontFamily={CANVAS_FONT}
+                listening={true}
+                onClick={
+                  activeTool === "text"
+                    ? (evt) => {
+                        evt.cancelBubble = true;
+                        setEditingInitialText(tb.text);
+                        setTextboxes(boxes =>
+                          boxes.map(b =>
+                            b.id === tb.id ? { ...b, isEditing: true } : b
+                          )
+                        );
+                        setEditingTextboxId(tb.id);
+                      }
+                    : undefined
+                }
+              />
+            )
+          )}
+        </Layer>
       </Stage>
+      {(() => {
+        const editingTb = textboxes.find(tb => tb.isEditing);
+        if (!editingTb) return null;
+        return (
+          <CanvasTextboxInput
+            isEditing={true}
+            key={editingTb.id}
+            className="canvas-textbox-input"
+            style={{
+              position: "fixed",
+              left: editingTb.x * stageScale + stagePos.x,
+              top: editingTb.y * stageScale + stagePos.y - 7 / 24 * editingTb.fontSize * stageScale,
+              fontSize: editingTb.fontSize * stageScale,
+              color: editingTb.color,
+              fontFamily: CANVAS_FONT,
+              width: Math.max(60, inputWidths[editingTb.id] || 0),
+              minWidth: 12,
+              background: "transparent",
+              border: "none",
+              outline: "none",
+              boxShadow: "none",
+              padding: 0,
+              lineHeight: 1,
+              zIndex: 10000,  
+            }}
+            value={editingTb.text}
+            spellCheck={false}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setTextboxes(boxes =>
+                boxes.map(b =>
+                  b.id === editingTb.id ? { ...b, text: e.target.value } : b
+                )
+              );
+              setInputWidths(w => ({
+                ...w,
+                [editingTb.id]: getTextWidth(e.target.value, editingTb.fontSize * stageScale, CANVAS_FONT)
+              }));
+            }}
+            onBlur={(e) => {
+              setTimeout(() => {
+                if (document.activeElement !== e.target) {
+                  setTextboxes(boxes =>
+                    boxes.map(b =>
+                      b.id === editingTb.id ? { ...b, isEditing: false } : b
+                    )
+                  );
+                  setEditingTextboxId(null);
+                  resetScroll();
+
+                  if (editingInitialText !== null && editingInitialText !== editingTb.text) {
+                    setUndoBuffer(prev => [...prev, {
+                      type: "editText",
+                      id: editingTb.id,
+                      from: editingInitialText,
+                      to: editingTb.text,
+                    }]);
+                    setRedoBuffer([]);
+                  }
+                  setEditingInitialText(null);
+                }
+              }, 0);
+            }}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === "Enter") {
+                setTextboxes(boxes =>
+                  boxes.map(b =>
+                    b.id === editingTb.id ? { ...b, isEditing: false } : b
+                  )
+                );
+                setEditingTextboxId(null);
+                resetScroll();
+                if (editingInitialText !== null && editingInitialText !== editingTb.text) {
+                  setUndoBuffer(prev => [...prev, {
+                    type: "editText",
+                    id: editingTb.id,
+                    from: editingInitialText,
+                    to: editingTb.text,
+                  }]);
+                  setRedoBuffer([]);
+                }
+                setEditingInitialText(null);
+              }
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };

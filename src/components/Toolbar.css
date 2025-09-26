@@ -31,10 +31,10 @@
   }
 }
 
-.pen-subtoolbar {
+.pen-subtoolbar,
+.shape-subtoolbar,
+.text-subtoolbar {
   position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
   background: var(--surface-glass);
   backdrop-filter: blur(12px) saturate(160%);
   -webkit-backdrop-filter: blur(12px) saturate(160%);
@@ -52,7 +52,12 @@
   isolation: isolate;
 }
 
-.pen-colors, .pen-thicknesses {
+.pen-colors, .pen-thicknesses,
+.shapes, .shape-colors, .sizes, .text-colors {
   display: flex;
   gap: 8px;
+}
+
+.shapes {
+  margin-bottom: 6px;
 }
