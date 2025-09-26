@@ -9,8 +9,7 @@
 
 <div>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/d9a863f15245995c9c7ca94535221e483ec23b2c_screenshot_2025-09-21_203311.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/c8995cdf063201d72b8311db14c9bc15c2e4c0ed_image.png
- width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/c8995cdf063201d72b8311db14c9bc15c2e4c0ed_image.png width=400>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=400>
 </div>
 <div>
