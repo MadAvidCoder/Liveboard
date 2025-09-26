@@ -130,7 +130,7 @@ const InfiniteCanvas: React.FC = () => {
     setEditingTextboxId(null);
     setEditingInitialText(null);
     setTimeout(() => {
-      const id = Math.random().toString(36).substr(2, 9);
+      const id = crypto.randomUUID();
       const newTextbox: Textbox = {
         id,
         x,
