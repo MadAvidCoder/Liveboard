@@ -8,11 +8,13 @@
 ![Build Status](https://img.shields.io/github/actions/workflow/status/madavidcoder/liveboard/release.yml)
 
 <div>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/d9a863f15245995c9c7ca94535221e483ec23b2c_screenshot_2025-09-21_203311.png width=500>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=500>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/61393ba6bf243e9aba30b302e1a695a732a8b6be_image.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3d27ae03b2d68ba54beaad3489c4932cec40fdd5_image.png width=250>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/cca4ab53c69b309b554598bbf91b8cccd4317f83_image.png width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/d9a863f15245995c9c7ca94535221e483ec23b2c_screenshot_2025-09-21_203311.png width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/c8995cdf063201d72b8311db14c9bc15c2e4c0ed_image.png
+ width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/61393ba6bf243e9aba30b302e1a695a732a8b6be_image.png width=250>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3d27ae03b2d68ba54beaad3489c4932cec40fdd5_image.png width=200>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/cca4ab53c69b309b554598bbf91b8cccd4317f83_image.png width=300>
 </div>
 
 ### Download it [here](https://github.com/MadAvidCoder/Liveboard/releases)!
@@ -24,10 +26,14 @@ Liveboard transforms your desktop into an infinite creative canvas, letting you 
 - **Lives on your desktop** - just minimise your window and get straight to the whiteboard
 - **Undo and Redo** - Fix up any mistakes by simply undoing your last action
 - **Pen Eraser** - Erase your pen marks simply by switching tools
+- **Shape Templates** - Use the shape tool to draw perfect shapes. Hold shift to snap to perfect circles/squares
+- **Text** - Use the text tool to write readable text on your whiteboard
 - **Fully Open-Source** - Fork the repo and implement your own new features
 
 ## Usage
 Head over to the [releases tab](https://github.com/MadAvidCoder/Liveboard/releases), and download the relevant installer for your system, from the latest release. Run the installer *(your computer may warn you it is unverified. It's safe to manually bypass this, and feel free to check the code if you're concerned about security)*. Once you've downloaded it, run the installer, and you're good to go!
+
+There a number of different tools within Liveboard. The pen tool is used for drawing ink on the whiteboard, and the eraser for erasing it. The shape tool can be used to draw perfect shapes, saving you draw them. The text tool enables readable text to be easily created, rather than drawing it. Undo and Redo work across all actions and tools. To pan hold `Ctrl` or `Alt` and drag around. Hold shift while using the shape tool to snap ellipses and rectangles to circles and squares. Liveboard also has full touch support - use one finger to draw, and two fingers to zoom or drag.
 
 If the app doesn't auto-start, manually open it, and it should appear on your desktop. An icon will appear in the tray, from where you can control it and quit the app. To use the whiteboard, minimise your window, and start drawing!
 
@@ -45,7 +51,7 @@ npm run electron # Launch electron (if necessary)
 To build and package it:
 ```bash
 npm run build
-npm run package # Run Electron Builder (will take ~5-10mins).
+npm run package # Package an electron installer for your current OS
 ```
 
 ## Tech Stack
