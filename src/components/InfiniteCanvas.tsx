@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Stage, Layer, Line, Circle, Arrow, Rect, Ellipse, Text } from "react-konva";
 import Toolbar from "./Toolbar";
+import CanvasTextboxInput from "./CanvasTextboxInput";
 import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
@@ -111,6 +112,42 @@ const InfiniteCanvas: React.FC = () => {
   const inputRefs = useRef<{ [id: string]: HTMLInputElement | null }>({});
   const [inputWidths, setInputWidths] = useState<{ [id: string]: number }>({});
 
+  const handleStageTextMouseDown = (e: any) => {
+    if (activeTool !== "text") return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    if (e.target && typeof e.target.getClassName === "function" && e.target.getClassName() === "Text") {
+      return;
+    }
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+    const x = (pointer.x - stagePos.x) / stageScale;
+    const y = (pointer.y - stagePos.y) / stageScale;
+    setTextboxes(prev =>
+      prev.map(tb => tb.isEditing ? { ...tb, isEditing: false } : tb)
+    );
+    setEditingTextboxId(null);
+    setEditingInitialText(null);
+    setTimeout(() => {
+      const id = Math.random().toString(36).substr(2, 9);
+      const newTextbox: Textbox = {
+        id,
+        x,
+        y,
+        text: "",
+        fontSize: currentTextFontSize,
+        color: currentColor,
+        isEditing: true,
+      };
+      setTextboxes(textboxes => textboxes.concat([newTextbox]));
+      setEditingTextboxId(id);
+      setUndoBuffer(prev => [...prev, { type: "addText", textbox: newTextbox }]);
+      setRedoBuffer([]);
+    }, 0);
+  };
+
+
   useEffect(() => {
     textboxes.forEach(tb => {
       if (tb.isEditing) {
@@ -151,35 +188,6 @@ const InfiniteCanvas: React.FC = () => {
   const resetScroll = () => {
     window.scrollTo(0, 0);
     setTimeout(() => window.scrollTo(0, 0), 1);
-  };
-
-  const handleDivClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (activeTool !== "text") return;
-    if ((e.target as HTMLElement).tagName === "INPUT") return;
-    const stageContainer = (stageRef.current as any)?.container();
-    if (!stageContainer || !stageContainer.contains(e.target as Node)) return;
-    const boundingRect = stageContainer.getBoundingClientRect();
-
-    const screenX = e.clientX - boundingRect.left;
-    const screenY = e.clientY - boundingRect.top;
-    const x = (screenX - stagePos.x) / stageScale;
-    const y = (screenY - stagePos.y) / stageScale;
-    
-    const id = Math.random().toString(36).substr(2, 9);
-    const newTextbox: Textbox = {
-      id,
-      x,
-      y,
-      text: "",
-      fontSize: currentTextFontSize,
-      color: currentColor,
-      isEditing: true,
-    };
-    setTextboxes(textboxes => [...textboxes, newTextbox]);
-    setEditingTextboxId(id);
-
-    setUndoBuffer(prev => [...prev, { type: "addText", textbox: newTextbox }]);
-    setRedoBuffer([]);
   };
 
   const toWorld = (pos: { x: number; y: number }) => ({
@@ -515,7 +523,6 @@ const InfiniteCanvas: React.FC = () => {
   return (
     <div
       style={{ width: "100vw", height: "100vh", position: "relative" }}
-      onClick={handleDivClick}
     >
       <Toolbar
         activeTool={activeTool}
@@ -531,19 +538,17 @@ const InfiniteCanvas: React.FC = () => {
         undo={undo}
         redo={redo}
       />
-      <Layer listening={false}>
-        <DotCanvasOverlay
-          stagePos={stagePos}
-          stageScale={stageScale}
-          width={window.innerWidth}
-          height={window.innerHeight}
-          baseDotSpacing={32}
-          dotRadius={1.5}
-          color="#d8e1e4ff"
-          opacity={0.75}
-          minScreenSpacing={16}
-        />
-      </Layer>
+      <DotCanvasOverlay
+        stagePos={stagePos}
+        stageScale={stageScale}
+        width={window.innerWidth}
+        height={window.innerHeight}
+        baseDotSpacing={32}
+        dotRadius={1.5}
+        color="#d8e1e4ff"
+        opacity={0.75}
+        minScreenSpacing={16}
+      />
       <Stage
         width={window.innerWidth}
         height={window.innerHeight}
@@ -553,9 +558,10 @@ const InfiniteCanvas: React.FC = () => {
         x={stagePos.x}
         y={stagePos.y}
         onWheel={handleWheel}
-        onPointerDown={activeTool === "text" ? undefined : handlePointerDown}
-        onPointerMove={handlePointerMove}
+        onMouseDown={activeTool === "text" ? handleStageTextMouseDown : undefined}
+        onPointerDown={activeTool !== "text" ? handlePointerDown : undefined}
         onPointerLeave={handlePointerLeave}
+        onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onContextMenu={e => e.evt.preventDefault()}
         onTouchStart={handleTouchStart}
@@ -712,97 +718,103 @@ const InfiniteCanvas: React.FC = () => {
                 fontSize={tb.fontSize}
                 fill={tb.color}
                 fontFamily={CANVAS_FONT}
-                draggable
-                onClick={() => {
-                  setEditingInitialText(tb.text);
-                  setTextboxes(boxes =>
-                    boxes.map(b =>
-                      b.id === tb.id ? { ...b, isEditing: true } : b
-                    )
-                  );
-                  setEditingTextboxId(tb.id);
-                }}
+                listening={true}
+                onClick={
+                  activeTool === "text"
+                    ? (evt) => {
+                        evt.cancelBubble = true;
+                        setEditingInitialText(tb.text);
+                        setTextboxes(boxes =>
+                          boxes.map(b =>
+                            b.id === tb.id ? { ...b, isEditing: true } : b
+                          )
+                        );
+                        setEditingTextboxId(tb.id);
+                      }
+                    : undefined
+                }
               />
             )
           )}
         </Layer>
       </Stage>
-      {textboxes.map(tb =>
-        tb.isEditing ? (
-          <input
-            key={tb.id}
-            ref={el => { inputRefs.current[tb.id] = el; }}
+      {(() => {
+        const editingTb = textboxes.find(tb => tb.isEditing);
+        if (!editingTb) return null;
+        return (
+          <CanvasTextboxInput
+            isEditing={true}
+            key={editingTb.id}
             className="canvas-textbox-input"
             style={{
               position: "fixed",
-              left: tb.x * stageScale + stagePos.x,
-              top: tb.y * stageScale + stagePos.y - 7 / 24 * tb.fontSize * stageScale,
-              fontSize: tb.fontSize * stageScale,
-              color: tb.color,
+              left: editingTb.x * stageScale + stagePos.x,
+              top: editingTb.y * stageScale + stagePos.y - 7 / 24 * editingTb.fontSize * stageScale,
+              fontSize: editingTb.fontSize * stageScale,
+              color: editingTb.color,
               fontFamily: CANVAS_FONT,
-              width: inputWidths[tb.id] || 24,
+              width: Math.max(60, inputWidths[editingTb.id] || 0),
               minWidth: 12,
-              background: "none",
+              background: "transparent",
               border: "none",
               outline: "none",
               boxShadow: "none",
               padding: 0,
               lineHeight: 1,
-              zIndex: 10
+              zIndex: 10000,  
             }}
-            value={tb.text}
-            autoFocus
+            value={editingTb.text}
             spellCheck={false}
-            onFocus={e => {
-              e.target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "auto" });
-              resetScroll();
-            }}
-            onChange={e => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
               setTextboxes(boxes =>
                 boxes.map(b =>
-                  b.id === tb.id ? { ...b, text: e.target.value } : b
+                  b.id === editingTb.id ? { ...b, text: e.target.value } : b
                 )
               );
               setInputWidths(w => ({
                 ...w,
-                [tb.id]: getTextWidth(e.target.value, tb.fontSize * stageScale, CANVAS_FONT)
+                [editingTb.id]: getTextWidth(e.target.value, editingTb.fontSize * stageScale, CANVAS_FONT)
               }));
             }}
-            onBlur={() => {
-              setTextboxes(boxes =>
-                boxes.map(b =>
-                  b.id === tb.id ? { ...b, isEditing: false } : b
-                )
-              );
-              setEditingTextboxId(null);
-              resetScroll();
+            onBlur={(e) => {
+              setTimeout(() => {
+                if (document.activeElement !== e.target) {
+                  setTextboxes(boxes =>
+                    boxes.map(b =>
+                      b.id === editingTb.id ? { ...b, isEditing: false } : b
+                    )
+                  );
+                  setEditingTextboxId(null);
+                  resetScroll();
 
-              if (editingInitialText !== null && editingInitialText !== tb.text) {
-                setUndoBuffer(prev => [...prev, {
-                  type: "editText",
-                  id: tb.id,
-                  from: editingInitialText,
-                  to: tb.text,
-                }]);
-                setRedoBuffer([]);
-              }
-              setEditingInitialText(null);
+                  if (editingInitialText !== null && editingInitialText !== editingTb.text) {
+                    setUndoBuffer(prev => [...prev, {
+                      type: "editText",
+                      id: editingTb.id,
+                      from: editingInitialText,
+                      to: editingTb.text,
+                    }]);
+                    setRedoBuffer([]);
+                  }
+                  setEditingInitialText(null);
+                }
+              }, 0);
             }}
-            onKeyDown={e => {
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === "Enter") {
                 setTextboxes(boxes =>
                   boxes.map(b =>
-                    b.id === tb.id ? { ...b, isEditing: false } : b
+                    b.id === editingTb.id ? { ...b, isEditing: false } : b
                   )
                 );
                 setEditingTextboxId(null);
                 resetScroll();
-                if (editingInitialText !== null && editingInitialText !== tb.text) {
+                if (editingInitialText !== null && editingInitialText !== editingTb.text) {
                   setUndoBuffer(prev => [...prev, {
                     type: "editText",
-                    id: tb.id,
+                    id: editingTb.id,
                     from: editingInitialText,
-                    to: tb.text,
+                    to: editingTb.text,
                   }]);
                   setRedoBuffer([]);
                 }
@@ -810,8 +822,8 @@ const InfiniteCanvas: React.FC = () => {
               }
             }}
           />
-        ) : null
-      )}
+        );
+      })()}
     </div>
   );
 };
