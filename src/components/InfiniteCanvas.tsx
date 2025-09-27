@@ -194,6 +194,18 @@ const InfiniteCanvas: React.FC = () => {
   }, [undoBuffer, redoBuffer, lines, textboxes]);
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'p') setActiveTool('pen');
+      if (e.key === 'e') setActiveTool('eraser');
+      if (e.key === 't') setActiveTool('text');
+      if (e.key === 's') setActiveTool('shape');
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  useEffect(() => {
     if (!editingTextboxId) return;
     const preventScroll = (e: Event) => {
       e.preventDefault();
