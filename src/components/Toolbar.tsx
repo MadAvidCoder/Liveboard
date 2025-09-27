@@ -26,11 +26,24 @@ interface ToolbarProps {
   setSelectedShape: (shape: ShapeType) => void;
   textFontSize: number;
   setTextFontSize: (size: number) => void;
+  eraserRadius: number;
+  setEraserRadius: (radius: number) => void;
+  clearCanvas: () => void;
   undo: () => void;
   redo: () => void;
+  theme: "light" | "dark";
+  getCanvasColor: (color: string, theme: "light" | "dark") => string;
 }
 
-const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, undo, redo }: ToolbarProps) => {
+function getBorderColor(color: string, theme: "light" | "dark") {
+  const isBlack = color === "#333" || color === "#000" || color.toLowerCase() === "black";
+  const isWhite = color === "#fff" || color.toLowerCase() === "white";
+  if (theme === "dark" && isBlack) return "#fff";
+  if (theme === "dark" && isWhite) return "#333";
+  return color;
+}
+
+const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, eraserRadius, setEraserRadius, clearCanvas, undo, redo, theme, getCanvasColor }: ToolbarProps) => {
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [subToolbarPos, setSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
   const penButtonRef = useRef<HTMLButtonElement>(null);
@@ -45,6 +58,11 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
   const textButtonRef = useRef<HTMLButtonElement>(null);
   const textSubToolbarRef = useRef<HTMLDivElement>(null);
   const [textSubToolbarPos, setTextSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
+
+  const [showEraserOptions, setShowEraserOptions] = useState(false);
+  const eraserButtonRef = useRef<HTMLButtonElement>(null);
+  const eraserSubToolbarRef = useRef<HTMLDivElement>(null);
+  const [eraserSubToolbarPos, setEraserSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
 
   useEffect(() => {
     function handleClickOutside(event: PointerEvent) {
@@ -75,10 +93,19 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
       ) {
         setShowTextOptions(false);
       }
+      if (
+        showEraserOptions &&
+        eraserButtonRef.current &&
+        !eraserButtonRef.current.contains(event.target as Node) &&
+        eraserSubToolbarRef.current &&
+        !eraserSubToolbarRef.current.contains(event.target as Node)
+      ) {
+        setShowEraserOptions(false);
+      }
     }
     document.addEventListener("pointerdown", handleClickOutside);
     return () => document.removeEventListener("pointerdown", handleClickOutside);
-  }, [showPenOptions, showShapeOptions, showTextOptions]);
+  }, [showPenOptions, showShapeOptions, showTextOptions, showEraserOptions]);
 
   const handlePenClick = () => {
     if (activeTool === "pen") {
@@ -105,6 +132,15 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
     setTool("text");
     setShowTextOptions(true);
+  };
+
+  const handleEraserClick = () => {
+    if (activeTool === "eraser") {
+      setShowEraserOptions((open) => !open);
+      return;
+    }
+    setTool("eraser");
+    setShowEraserOptions(true);
   };
 
   const handleToolClick = (tool: Tool) => {
@@ -143,6 +179,16 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
   }, [showTextOptions]);
 
+  useLayoutEffect(() => {
+    if (showEraserOptions && eraserButtonRef.current) {
+      const rect = eraserButtonRef.current.getBoundingClientRect();
+      setEraserSubToolbarPos({
+        top: rect.bottom + 12,
+        left: rect.left + rect.width / 2
+      });
+    }
+  }, [showEraserOptions]);
+
   return (
     <>
       <nav className="toolbar" aria-label="Canvas tools">
@@ -155,9 +201,10 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
             {FaPen({size: 18})}
           </button>
         <button
+          ref={eraserButtonRef}
           className={`toolbar-btn${activeTool === "eraser" ? " selected" : ""}`}
           aria-label="Eraser tool"
-          onClick={() => handleToolClick("eraser")}
+          onClick={() => handleEraserClick()}
         >
           {FaEraser({size: 18})}
         </button>
@@ -209,8 +256,8 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={color}
                 className="color-btn"
                 style={{
-                  background: color,
-                  border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                  background: getCanvasColor(color, theme),
+                  border: "2px solid " + getBorderColor(color === penColor ? "#333" : "#fff", theme),
                 }}
                 onClick={() => setPenColor(color)}
               />
@@ -222,7 +269,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={thick}
                 className="thickness-btn"
                 style={{
-                  border: thick === penThickness ? "2px solid #333" : "2px solid #ffffff00",
+                  border: "2px solid " + getBorderColor(thick === penThickness ? "#333" : "#ffffff00", theme),
                 }}
                 onClick={() => setPenThickness(thick)}
               >
@@ -231,12 +278,58 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                     width: thick,
                     height: thick,
                     borderRadius: "50%",
-                    background: penColor,
+                    background: getCanvasColor(penColor, theme),
                     margin: "auto",
                   }}
                 />
               </button>
             ))}
+          </div>
+        </nav>
+      )}
+      {activeTool === "eraser" && showEraserOptions && (
+        <nav
+          className="eraser-subtoolbar"
+          ref={eraserSubToolbarRef}
+          style={{
+            position: "fixed",
+            top: `${eraserSubToolbarPos.top}px`,
+            left: `${eraserSubToolbarPos.left}px`,
+            transform: "translateX(-50%)"
+          }}
+        >
+          <div style={{display:"flex", flexDirection:"column", alignItems:"center", gap:3}}>
+            <label style={{fontSize:13, marginBottom:0}}>Eraser size</label>
+            <div style={{display:"flex", alignItems:"center", gap:8}}>
+              <input
+                type="range"
+                min={5}
+                max={80}
+                step={1}
+                value={eraserRadius}
+                onChange={e => setEraserRadius(Number(e.target.value))}
+                style={{width: 110}}
+              />
+              <span style={{fontSize:14, minWidth: 28, textAlign: "right"}}>{eraserRadius}px</span>
+            </div>
+            <button
+              style={{
+                marginTop: 8,
+                background: "#ff5e5e",
+                color: "#fff",
+                border: "none",
+                borderRadius: 6,
+                padding: "6px 16px",
+                cursor: "pointer",
+                fontWeight: 500,
+                fontSize: 15,
+                boxShadow: "0 2px 4px rgba(0,0,0,0.07)"
+              }}
+              onClick={clearCanvas}
+              title="Clear all drawings and text"
+            >
+              Clear All
+            </button>
           </div>
         </nav>
       )}
@@ -269,8 +362,8 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={color}
                 className="color-btn"
                 style={{
-                  background: color,
-                  border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                  background: getCanvasColor(color, theme),
+                  border: "2px solid " + getBorderColor(color === penColor ? "#333" : "#fff", theme),
                 }}
                 onClick={() => setPenColor(color)}
               />
@@ -309,8 +402,8 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                   key={color}
                   className="color-btn"
                   style={{
-                    background: color,
-                    border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                    background: getCanvasColor(color, theme),
+                    border: "2px solid " + getBorderColor(color === penColor ? "#333" : "#fff", theme),
                   }}
                   onClick={() => setPenColor(color)}
                 />

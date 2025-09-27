@@ -5,6 +5,17 @@ import CanvasTextboxInput from "./CanvasTextboxInput";
 import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
+import { FaMoon, FaSun } from "react-icons/fa";
+
+interface LiveboardAPI {
+  autosavePath: () => string;
+  writeFile: (filePath: string, data: string) => void;
+  readFile: (filePath: string) => string;
+  fileExists: (filePath: string) => boolean;
+  mkdir: (dirPath: string) => void;
+  dirname: (filePath: string) => string;
+}
+declare const window: Window & { liveboardAPI: LiveboardAPI };
 
 export type ShapeType = "line" | "arrow" | "circle" | "rectangle";
 type Shape = {
@@ -27,6 +38,14 @@ type Textbox = {
 };
 
 const INITIAL_SCALE = 1;
+
+function getCanvasColor(color: string, theme: "light" | "dark") {
+  const isBlack = color === "#222" || color === "#000" || color.toLowerCase() === "black";
+  const isWhite = color === "#fff" || color.toLowerCase() === "white";
+  if (theme === "dark" && isBlack) return "#fff";
+  if (theme === "dark" && isWhite) return "#222";
+  return color;
+}
 
 function distToSegment(p: { x: number, y: number }, v: { x: number, y: number }, w: { x: number, y: number }) {
   const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
@@ -58,6 +77,11 @@ getTextWidth.canvas = null as HTMLCanvasElement | null;
 const CANVAS_FONT = "Inter, SF Pro Display, Segoe UI, Roboto, Arial, sans-serif";
 
 const InfiniteCanvas: React.FC = () => {
+  const themePath = window.liveboardAPI.autosavePath().replace(/\.json$/, ".theme");
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  const autosavePath = window.liveboardAPI.autosavePath();
+
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const [lines, setLines] = useState<Shape[]>([]);
@@ -94,14 +118,40 @@ const InfiniteCanvas: React.FC = () => {
 
   const [activeTool, setActiveTool] = useState<Tool>("pen");
   
-  const [eraserRadius] = useState(10);
-
   const stageRef = useRef<any>(null);
   
   const lastPanPos = useRef({ x: 0, y: 0 });
   const isDrawing = useRef(false);
   const drawPointerId = useRef<number | null>(null);
 
+  const [autosaveLoaded, setAutosaveLoaded] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      setThemeLoaded(true);
+      if (window.liveboardAPI.fileExists(themePath)) {
+        const fileContent = window.liveboardAPI.readFile(themePath);
+        if (fileContent === "light" || fileContent === "dark") {
+          setTheme(fileContent);
+        }
+      }
+    } catch (err) {
+      console.error("Theme load error:", err);
+      setThemeLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!themeLoaded) return;
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      window.liveboardAPI.writeFile(themePath, theme);
+    } catch (err) {
+      console.error("Theme save error:", err);
+    }
+  }, [theme, themeLoaded]);
+  
   const initialPinch = useRef<{
     center: { x: number; y: number },
     stagePos: { x: number; y: number },
@@ -111,6 +161,18 @@ const InfiniteCanvas: React.FC = () => {
 
   const inputRefs = useRef<{ [id: string]: HTMLInputElement | null }>({});
   const [inputWidths, setInputWidths] = useState<{ [id: string]: number }>({});
+
+  const [eraserRadius, setEraserRadius] = useState(10);
+  const clearCanvas = () => {
+    setLines([]);
+    setTextboxes([]);
+    setShapePreview(null);
+    setUndoneLines([]);
+    setEraseBuffer([]);
+    setRedoEraseBuffer([]);
+    setUndoBuffer([]);
+    setRedoBuffer([]);
+  };
 
   const handleStageTextMouseDown = (e: any) => {
     if (activeTool !== "text") return;
@@ -147,6 +209,33 @@ const InfiniteCanvas: React.FC = () => {
     }, 0);
   };
 
+  useEffect(() => {
+    try {
+      if (window.liveboardAPI.fileExists(autosavePath)) {
+        const fileContent = window.liveboardAPI.readFile(autosavePath);
+        const data = JSON.parse(fileContent);
+        setLines(data.lines || []);
+        setTextboxes(data.textboxes || []);
+        setStageScale(data.stageScale || INITIAL_SCALE);
+        setStagePos(data.stagePos || { x: 0, y: 0 });
+      }
+      setAutosaveLoaded(true);
+    } catch (err) {
+      console.error("Autosave load error:", err);
+      setAutosaveLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!autosaveLoaded) return;
+    try {
+      window.liveboardAPI.mkdir(window.liveboardAPI.dirname(autosavePath));
+      const data = JSON.stringify({ lines, textboxes, stageScale, stagePos });
+      window.liveboardAPI.writeFile(autosavePath, data);
+    } catch (err) {
+      console.error("Autosave error:", err);
+    }
+  }, [lines, textboxes, stageScale, stagePos, autosaveLoaded]);
 
   useEffect(() => {
     textboxes.forEach(tb => {
@@ -173,6 +262,37 @@ const InfiniteCanvas: React.FC = () => {
       window.scrollTo(0, 0);
     };
   }, [editingTextboxId]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undoBuffer, redoBuffer, lines, textboxes]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 'p') setActiveTool('pen');
+      if (e.key === 'e') setActiveTool('eraser');
+      if (e.key === 't') setActiveTool('text');
+      if (e.key === 's') setActiveTool('shape');
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     if (!editingTextboxId) return;
@@ -535,9 +655,40 @@ const InfiniteCanvas: React.FC = () => {
         setSelectedShape={setCurrentShape}
         textFontSize={currentTextFontSize}
         setTextFontSize={setCurrentTextFontSize}
+        eraserRadius={eraserRadius}
+        setEraserRadius={setEraserRadius}
+        clearCanvas={clearCanvas}
         undo={undo}
         redo={redo}
+        theme={theme}
+        getCanvasColor={getCanvasColor}
       />
+      <button
+        className="theme-toggle-btn"
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        style={{
+          position: "fixed",
+          bottom: 22,
+          right: 22,
+          zIndex: 100,
+          background: "var(--surface-glass)",
+          color: "var(--on-surface)",
+          borderRadius: "50%",
+          width: 40,
+          height: 40,
+          border: "1.5px solid var(--border)",
+          boxShadow: "var(--shadow)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          cursor: "pointer",
+          transition: "background var(--transition), color var(--transition), border var(--transition)"
+        }}
+        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      >
+        {theme === "dark" ? FaSun({size: 22}) : FaMoon({size: 22})}
+      </button>
       <DotCanvasOverlay
         stagePos={stagePos}
         stageScale={stageScale}
@@ -545,8 +696,8 @@ const InfiniteCanvas: React.FC = () => {
         height={window.innerHeight}
         baseDotSpacing={32}
         dotRadius={1.5}
-        color="#d8e1e4ff"
-        opacity={0.75}
+        color={theme === "light" ? "#d8e1e4" : "#383a43"}
+        opacity={theme === "light" ? 0.75 : 0.31}
         minScreenSpacing={16}
       />
       <Stage
@@ -587,8 +738,8 @@ const InfiniteCanvas: React.FC = () => {
                   <Arrow
                     key={i}
                     points={shape.points}
-                    stroke={shape.color}
-                    fill={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
+                    fill={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     pointerLength={16}
                     pointerWidth={16}
@@ -605,7 +756,7 @@ const InfiniteCanvas: React.FC = () => {
                     y={Math.min(shape.points[1], shape.points[3])}
                     width={Math.abs(shape.points[2] - shape.points[0])}
                     height={Math.abs(shape.points[3] - shape.points[1])}
-                    stroke={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     globalCompositeOperation="source-over"
                   />
@@ -618,7 +769,7 @@ const InfiniteCanvas: React.FC = () => {
                     y={(shape.points[1] + shape.points[3]) / 2}
                     radiusX={Math.abs(shape.points[2] - shape.points[0]) / 2}
                     radiusY={Math.abs(shape.points[3] - shape.points[1]) / 2}
-                    stroke={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     globalCompositeOperation="source-over"
                   />
@@ -629,7 +780,7 @@ const InfiniteCanvas: React.FC = () => {
                   <Line
                     key={i}
                     points={shape.points}
-                    stroke={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     tension={0.5}
                     lineCap="round"
@@ -644,7 +795,7 @@ const InfiniteCanvas: React.FC = () => {
               {shapePreview.type === "line" && (
                 <Line
                   points={shapePreview.points}
-                  stroke={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   tension={0}
                   lineCap="round"
@@ -656,8 +807,8 @@ const InfiniteCanvas: React.FC = () => {
               {shapePreview.type === "arrow" && (
                 <Arrow
                   points={shapePreview.points}
-                  stroke={shapePreview.color}
-                  fill={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
+                  fill={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   pointerLength={16}
                   pointerWidth={16}
@@ -673,7 +824,7 @@ const InfiniteCanvas: React.FC = () => {
                   y={Math.min(shapePreview.points[1], shapePreview.points[3])}
                   width={Math.abs(shapePreview.points[2] - shapePreview.points[0])}
                   height={Math.abs(shapePreview.points[3] - shapePreview.points[1])}
-                  stroke={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   globalCompositeOperation="source-over"
                   dash={[10, 5]}
@@ -685,7 +836,7 @@ const InfiniteCanvas: React.FC = () => {
                   y={(shapePreview.points[1] + shapePreview.points[3]) / 2}
                   radiusX={Math.abs(shapePreview.points[2] - shapePreview.points[0]) / 2}
                   radiusY={Math.abs(shapePreview.points[3] - shapePreview.points[1]) / 2}
-                  stroke={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   globalCompositeOperation="source-over"
                   dash={[10, 5]}
@@ -716,7 +867,7 @@ const InfiniteCanvas: React.FC = () => {
                 y={tb.y}
                 text={tb.text}
                 fontSize={tb.fontSize}
-                fill={tb.color}
+                fill={getCanvasColor(tb.color, theme)}
                 fontFamily={CANVAS_FONT}
                 listening={true}
                 onClick={
@@ -751,7 +902,7 @@ const InfiniteCanvas: React.FC = () => {
               left: editingTb.x * stageScale + stagePos.x,
               top: editingTb.y * stageScale + stagePos.y - 7 / 24 * editingTb.fontSize * stageScale,
               fontSize: editingTb.fontSize * stageScale,
-              color: editingTb.color,
+              color: getCanvasColor(editingTb.color, theme),
               fontFamily: CANVAS_FONT,
               width: Math.max(60, inputWidths[editingTb.id] || 0),
               minWidth: 12,

@@ -12,3 +12,18 @@
   --toolbar-height: 44px;
   --transition: 0.16s cubic-bezier(.4,0,.2,1);
 }
+
+:root[data-theme="dark"] {
+  --background: #181a1b;
+  --surface: #222326;
+  --surface-glass: rgba(34,35,38,0.7);
+  --on-surface: #f8fafd;
+  --on-surface-muted: #b0b6c8;
+  --primary: #4f8cff;
+  --primary-accent: #243c5e;
+  --border: #2b2f35;
+  --shadow: 0 4px 32px 0 rgba(20, 30, 40, 0.25);
+  --radius: 16px;
+  --toolbar-height: 44px;
+  --transition: 0.16s cubic-bezier(.4,0,.2,1);
+}

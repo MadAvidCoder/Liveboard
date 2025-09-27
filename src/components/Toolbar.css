@@ -21,6 +21,7 @@
   isolation: isolate;
 }
 
+
 @media (max-width: 700px) {
   .toolbar {
     flex-direction: column;
@@ -29,11 +30,22 @@
     min-width: 0;
     gap: 1rem;
   }
+  .pen-subtoolbar,
+  .shape-subtoolbar,
+  .text-subtoolbar,
+  .eraser-subtoolbar {
+    min-width: 0;
+    padding: 8px 6px;
+  }
+  .eraser-subtoolbar input[type="range"] {
+    width: 80px;
+  }
 }
 
 .pen-subtoolbar,
 .shape-subtoolbar,
-.text-subtoolbar {
+.text-subtoolbar,
+.eraser-subtoolbar {
   position: fixed;
   background: var(--surface-glass);
   backdrop-filter: blur(12px) saturate(160%);
@@ -60,4 +72,32 @@
 
 .shapes {
   margin-bottom: 6px;
+}
+
+.eraser-subtoolbar label {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.eraser-subtoolbar span {
+  font-size: 14px;
+  min-width: 28px;
+  text-align: right;
+}
+
+.eraser-subtoolbar button {
+  margin-top: 8px;
+  background: #ff5e5e;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+  transition: background 0.15s;
+}
+.eraser-subtoolbar button:hover {
+  background: #e04747;
 }
