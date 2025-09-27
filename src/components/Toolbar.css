@@ -77,7 +77,6 @@
 .eraser-subtoolbar label {
   font-size: 13px;
   margin-bottom: 4px;
-  color: var(--text-secondary, #222);
 }
 
 .eraser-subtoolbar span {
