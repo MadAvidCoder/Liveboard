@@ -69,6 +69,7 @@ getTextWidth.canvas = null as HTMLCanvasElement | null;
 const CANVAS_FONT = "Inter, SF Pro Display, Segoe UI, Roboto, Arial, sans-serif";
 
 const InfiniteCanvas: React.FC = () => {
+  const themePath = window.liveboardAPI.autosavePath().replace(/\.json$/, ".theme");
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   const autosavePath = window.liveboardAPI.autosavePath();
@@ -116,7 +117,33 @@ const InfiniteCanvas: React.FC = () => {
   const drawPointerId = useRef<number | null>(null);
 
   const [autosaveLoaded, setAutosaveLoaded] = useState(false);
+  const [themeLoaded, setThemeLoaded] = useState(false);
 
+  useEffect(() => {
+    try {
+      setThemeLoaded(true);
+      if (window.liveboardAPI.fileExists(themePath)) {
+        const fileContent = window.liveboardAPI.readFile(themePath);
+        if (fileContent === "light" || fileContent === "dark") {
+          setTheme(fileContent);
+        }
+      }
+    } catch (err) {
+      console.error("Theme load error:", err);
+      setThemeLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!themeLoaded) return;
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      window.liveboardAPI.writeFile(themePath, theme);
+    } catch (err) {
+      console.error("Theme save error:", err);
+    }
+  }, [theme]);
+  
   const initialPinch = useRef<{
     center: { x: number; y: number },
     stagePos: { x: number; y: number },
