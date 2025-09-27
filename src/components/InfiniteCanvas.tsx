@@ -106,8 +106,6 @@ const InfiniteCanvas: React.FC = () => {
 
   const [activeTool, setActiveTool] = useState<Tool>("pen");
   
-  const [eraserRadius] = useState(10);
-
   const stageRef = useRef<any>(null);
   
   const lastPanPos = useRef({ x: 0, y: 0 });
@@ -125,6 +123,18 @@ const InfiniteCanvas: React.FC = () => {
 
   const inputRefs = useRef<{ [id: string]: HTMLInputElement | null }>({});
   const [inputWidths, setInputWidths] = useState<{ [id: string]: number }>({});
+
+  const [eraserRadius, setEraserRadius] = useState(10);
+  const clearCanvas = () => {
+    setLines([]);
+    setTextboxes([]);
+    setShapePreview(null);
+    setUndoneLines([]);
+    setEraseBuffer([]);
+    setRedoEraseBuffer([]);
+    setUndoBuffer([]);
+    setRedoBuffer([]);
+  };
 
   const handleStageTextMouseDown = (e: any) => {
     if (activeTool !== "text") return;
@@ -607,6 +617,9 @@ const InfiniteCanvas: React.FC = () => {
         setSelectedShape={setCurrentShape}
         textFontSize={currentTextFontSize}
         setTextFontSize={setCurrentTextFontSize}
+        eraserRadius={eraserRadius}
+        setEraserRadius={setEraserRadius}
+        clearCanvas={clearCanvas}
         undo={undo}
         redo={redo}
       />
