@@ -696,8 +696,8 @@ const InfiniteCanvas: React.FC = () => {
         height={window.innerHeight}
         baseDotSpacing={32}
         dotRadius={1.5}
-        color="#d8e1e4ff"
-        opacity={0.75}
+        color={theme === "light" ? "#d8e1e4" : "#383a43"}
+        opacity={theme === "light" ? 0.75 : 0.31}
         minScreenSpacing={16}
       />
       <Stage
