@@ -39,6 +39,12 @@ type Textbox = {
 
 const INITIAL_SCALE = 1;
 
+function getCanvasColor(color: string, theme: "light" | "dark") {
+  const isBlack = color === "#222" || color === "#000" || color.toLowerCase() === "black";
+  if (theme === "dark" && isBlack) return "#fff";
+  return color;
+}
+
 function distToSegment(p: { x: number, y: number }, v: { x: number, y: number }, w: { x: number, y: number }) {
   const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
   if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
@@ -728,8 +734,8 @@ const InfiniteCanvas: React.FC = () => {
                   <Arrow
                     key={i}
                     points={shape.points}
-                    stroke={shape.color}
-                    fill={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
+                    fill={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     pointerLength={16}
                     pointerWidth={16}
@@ -746,7 +752,7 @@ const InfiniteCanvas: React.FC = () => {
                     y={Math.min(shape.points[1], shape.points[3])}
                     width={Math.abs(shape.points[2] - shape.points[0])}
                     height={Math.abs(shape.points[3] - shape.points[1])}
-                    stroke={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     globalCompositeOperation="source-over"
                   />
@@ -759,7 +765,7 @@ const InfiniteCanvas: React.FC = () => {
                     y={(shape.points[1] + shape.points[3]) / 2}
                     radiusX={Math.abs(shape.points[2] - shape.points[0]) / 2}
                     radiusY={Math.abs(shape.points[3] - shape.points[1]) / 2}
-                    stroke={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     globalCompositeOperation="source-over"
                   />
@@ -770,7 +776,7 @@ const InfiniteCanvas: React.FC = () => {
                   <Line
                     key={i}
                     points={shape.points}
-                    stroke={shape.color}
+                    stroke={getCanvasColor(shape.color, theme)}
                     strokeWidth={shape.strokeWidth}
                     tension={0.5}
                     lineCap="round"
@@ -785,7 +791,7 @@ const InfiniteCanvas: React.FC = () => {
               {shapePreview.type === "line" && (
                 <Line
                   points={shapePreview.points}
-                  stroke={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   tension={0}
                   lineCap="round"
@@ -797,8 +803,8 @@ const InfiniteCanvas: React.FC = () => {
               {shapePreview.type === "arrow" && (
                 <Arrow
                   points={shapePreview.points}
-                  stroke={shapePreview.color}
-                  fill={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
+                  fill={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   pointerLength={16}
                   pointerWidth={16}
@@ -814,7 +820,7 @@ const InfiniteCanvas: React.FC = () => {
                   y={Math.min(shapePreview.points[1], shapePreview.points[3])}
                   width={Math.abs(shapePreview.points[2] - shapePreview.points[0])}
                   height={Math.abs(shapePreview.points[3] - shapePreview.points[1])}
-                  stroke={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   globalCompositeOperation="source-over"
                   dash={[10, 5]}
@@ -826,7 +832,7 @@ const InfiniteCanvas: React.FC = () => {
                   y={(shapePreview.points[1] + shapePreview.points[3]) / 2}
                   radiusX={Math.abs(shapePreview.points[2] - shapePreview.points[0]) / 2}
                   radiusY={Math.abs(shapePreview.points[3] - shapePreview.points[1]) / 2}
-                  stroke={shapePreview.color}
+                  stroke={getCanvasColor(shapePreview.color, theme)}
                   strokeWidth={shapePreview.strokeWidth}
                   globalCompositeOperation="source-over"
                   dash={[10, 5]}
@@ -857,7 +863,7 @@ const InfiniteCanvas: React.FC = () => {
                 y={tb.y}
                 text={tb.text}
                 fontSize={tb.fontSize}
-                fill={tb.color}
+                fill={getCanvasColor(tb.color, theme)}
                 fontFamily={CANVAS_FONT}
                 listening={true}
                 onClick={
@@ -892,7 +898,7 @@ const InfiniteCanvas: React.FC = () => {
               left: editingTb.x * stageScale + stagePos.x,
               top: editingTb.y * stageScale + stagePos.y - 7 / 24 * editingTb.fontSize * stageScale,
               fontSize: editingTb.fontSize * stageScale,
-              color: editingTb.color,
+              color: getCanvasColor(editingTb.color, theme),
               fontFamily: CANVAS_FONT,
               width: Math.max(60, inputWidths[editingTb.id] || 0),
               minWidth: 12,
