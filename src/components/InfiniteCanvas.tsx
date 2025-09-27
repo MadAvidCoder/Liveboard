@@ -150,7 +150,7 @@ const InfiniteCanvas: React.FC = () => {
     } catch (err) {
       console.error("Theme save error:", err);
     }
-  }, [theme]);
+  }, [theme, themeLoaded]);
   
   const initialPinch = useRef<{
     center: { x: number; y: number },
