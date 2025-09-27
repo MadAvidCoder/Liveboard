@@ -6,6 +6,16 @@ import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
 import { KonvaEventObject } from "konva/lib/Node";
 
+interface LiveboardAPI {
+  autosavePath: () => string;
+  writeFile: (filePath: string, data: string) => void;
+  readFile: (filePath: string) => string;
+  fileExists: (filePath: string) => boolean;
+  mkdir: (dirPath: string) => void;
+  dirname: (filePath: string) => string;
+}
+declare const window: Window & { liveboardAPI: LiveboardAPI };
+
 export type ShapeType = "line" | "arrow" | "circle" | "rectangle";
 type Shape = {
   points: number[],
@@ -58,6 +68,8 @@ getTextWidth.canvas = null as HTMLCanvasElement | null;
 const CANVAS_FONT = "Inter, SF Pro Display, Segoe UI, Roboto, Arial, sans-serif";
 
 const InfiniteCanvas: React.FC = () => {
+  const autosavePath = window.liveboardAPI.autosavePath();
+
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const [lines, setLines] = useState<Shape[]>([]);
@@ -101,6 +113,8 @@ const InfiniteCanvas: React.FC = () => {
   const lastPanPos = useRef({ x: 0, y: 0 });
   const isDrawing = useRef(false);
   const drawPointerId = useRef<number | null>(null);
+
+  const [autosaveLoaded, setAutosaveLoaded] = useState(false);
 
   const initialPinch = useRef<{
     center: { x: number; y: number },
@@ -147,6 +161,33 @@ const InfiniteCanvas: React.FC = () => {
     }, 0);
   };
 
+  useEffect(() => {
+    try {
+      if (window.liveboardAPI.fileExists(autosavePath)) {
+        const fileContent = window.liveboardAPI.readFile(autosavePath);
+        const data = JSON.parse(fileContent);
+        setLines(data.lines || []);
+        setTextboxes(data.textboxes || []);
+        setStageScale(data.stageScale || INITIAL_SCALE);
+        setStagePos(data.stagePos || { x: 0, y: 0 });
+      }
+      setAutosaveLoaded(true);
+    } catch (err) {
+      console.error("Autosave load error:", err);
+      setAutosaveLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!autosaveLoaded) return;
+    try {
+      window.liveboardAPI.mkdir(window.liveboardAPI.dirname(autosavePath));
+      const data = JSON.stringify({ lines, textboxes, stageScale, stagePos });
+      window.liveboardAPI.writeFile(autosavePath, data);
+    } catch (err) {
+      console.error("Autosave error:", err);
+    }
+  }, [lines, textboxes, stageScale, stagePos, autosaveLoaded]);
 
   useEffect(() => {
     textboxes.forEach(tb => {
