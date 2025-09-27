@@ -31,9 +31,19 @@ interface ToolbarProps {
   clearCanvas: () => void;
   undo: () => void;
   redo: () => void;
+  theme: "light" | "dark";
+  getCanvasColor: (color: string, theme: "light" | "dark") => string;
 }
 
-const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, eraserRadius, setEraserRadius, clearCanvas, undo, redo }: ToolbarProps) => {
+function getBorderColor(color: string, theme: "light" | "dark") {
+  const isBlack = color === "#333" || color === "#000" || color.toLowerCase() === "black";
+  const isWhite = color === "#fff" || color.toLowerCase() === "white";
+  if (theme === "dark" && isBlack) return "#fff";
+  if (theme === "dark" && isWhite) return "#333";
+  return color;
+}
+
+const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, eraserRadius, setEraserRadius, clearCanvas, undo, redo, theme, getCanvasColor }: ToolbarProps) => {
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [subToolbarPos, setSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
   const penButtonRef = useRef<HTMLButtonElement>(null);
@@ -246,8 +256,8 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={color}
                 className="color-btn"
                 style={{
-                  background: color,
-                  border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                  background: getCanvasColor(color, theme),
+                  border: "2px solid " + getBorderColor(color === penColor ? "#333" : "#fff", theme),
                 }}
                 onClick={() => setPenColor(color)}
               />
@@ -259,7 +269,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={thick}
                 className="thickness-btn"
                 style={{
-                  border: thick === penThickness ? "2px solid #333" : "2px solid #ffffff00",
+                  border: "2px solid " + getBorderColor(thick === penThickness ? "#333" : "#ffffff00", theme),
                 }}
                 onClick={() => setPenThickness(thick)}
               >
@@ -268,7 +278,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                     width: thick,
                     height: thick,
                     borderRadius: "50%",
-                    background: penColor,
+                    background: getCanvasColor(penColor, theme),
                     margin: "auto",
                   }}
                 />
@@ -352,8 +362,8 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                 key={color}
                 className="color-btn"
                 style={{
-                  background: color,
-                  border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                  background: getCanvasColor(color, theme),
+                  border: "2px solid " + getBorderColor(color === penColor ? "#333" : "#fff", theme),
                 }}
                 onClick={() => setPenColor(color)}
               />
@@ -392,8 +402,8 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                   key={color}
                   className="color-btn"
                   style={{
-                    background: color,
-                    border: color === penColor ? "2px solid #333" : "2px solid #fff",
+                    background: getCanvasColor(color, theme),
+                    border: "2px solid " + getBorderColor(color === penColor ? "#333" : "#fff", theme),
                   }}
                   onClick={() => setPenColor(color)}
                 />

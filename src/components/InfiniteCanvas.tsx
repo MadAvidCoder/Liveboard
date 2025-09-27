@@ -41,7 +41,9 @@ const INITIAL_SCALE = 1;
 
 function getCanvasColor(color: string, theme: "light" | "dark") {
   const isBlack = color === "#222" || color === "#000" || color.toLowerCase() === "black";
+  const isWhite = color === "#fff" || color.toLowerCase() === "white";
   if (theme === "dark" && isBlack) return "#fff";
+  if (theme === "dark" && isWhite) return "#222";
   return color;
 }
 
@@ -658,6 +660,8 @@ const InfiniteCanvas: React.FC = () => {
         clearCanvas={clearCanvas}
         undo={undo}
         redo={redo}
+        theme={theme}
+        getCanvasColor={getCanvasColor}
       />
       <button
         className="theme-toggle-btn"
