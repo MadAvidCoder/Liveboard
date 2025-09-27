@@ -175,6 +175,25 @@ const InfiniteCanvas: React.FC = () => {
   }, [editingTextboxId]);
 
   useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undoBuffer, redoBuffer, lines, textboxes]);
+
+  useEffect(() => {
     if (!editingTextboxId) return;
     const preventScroll = (e: Event) => {
       e.preventDefault();
