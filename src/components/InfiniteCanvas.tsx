@@ -846,8 +846,8 @@ const InfiniteCanvas: React.FC = () => {
           )}
           {activeTool === "eraser" && cursorPos && (
             <Circle
-              x={cursorPos.x}
-              y={cursorPos.y}
+              x={toWorld(cursorPos).x}
+              y={toWorld(cursorPos).y}
               radius={eraserRadius / stageScale}
               stroke="#6393ed"
               strokeWidth={5 / stageScale}
