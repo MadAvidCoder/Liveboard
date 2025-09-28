@@ -186,9 +186,32 @@ const InfiniteCanvas: React.FC = () => {
     if (!pointer) return;
     const x = (pointer.x - stagePos.x) / stageScale;
     const y = (pointer.y - stagePos.y) / stageScale;
-    setTextboxes(prev =>
-      prev.map(tb => tb.isEditing ? { ...tb, isEditing: false } : tb)
-    );
+
+    setTextboxes(prev => {
+      let changed = false;
+      let newBoxes = prev.map(tb => {
+        if (tb.isEditing) {
+          if (editingInitialText !== null && editingInitialText !== tb.text) {
+            setUndoBuffer(ub => [...ub, {
+              type: "editText",
+              id: tb.id,
+              from: editingInitialText,
+              to: tb.text,
+            }]);
+            setRedoBuffer([]);
+            changed = true;
+          }
+          return { ...tb, isEditing: false };
+        }
+        return tb;
+      });
+      if (changed) {
+        setEditingTextboxId(null);
+        setEditingInitialText(null);
+      }
+      return newBoxes;
+    });
+
     setEditingTextboxId(null);
     setEditingInitialText(null);
     setTimeout(() => {
@@ -345,8 +368,13 @@ const InfiniteCanvas: React.FC = () => {
         });
         break;
       case "addText":
+        const removedTextbox = textboxes.find(tb => tb.id === action.textbox.id);
         setTextboxes(tbs => tbs.filter(tb => tb.id !== action.textbox.id));
-        setRedoBuffer(rb => [...rb, action]);
+        if (removedTextbox) {
+          setRedoBuffer(rb => [...rb, { type: "addText", textbox: removedTextbox }]);
+        } else {
+          setRedoBuffer(rb => [...rb, action]);
+        }
         break;
       case "editText":
         setTextboxes(tbs => tbs.map(tb =>
@@ -382,7 +410,10 @@ const InfiniteCanvas: React.FC = () => {
         setUndoBuffer(prev => [...prev, { type: "draw" }]);
         break;
       case "addText":
-        setTextboxes(tbs => [...tbs, action.textbox]);
+        setTextboxes(tbs => {
+          if (tbs.some(tb => tb.id === action.textbox.id)) return tbs;
+          return [...tbs, action.textbox];
+        });
         setUndoBuffer(ub => [...ub, action]);
         break;
       case "editText":
@@ -392,7 +423,10 @@ const InfiniteCanvas: React.FC = () => {
         setUndoBuffer(ub => [...ub, action]);
         break;
       case "removeText":
-        setTextboxes(tbs => tbs.filter(tb => tb.id !== action.textbox.id));
+        setTextboxes(tbs => {
+          if (!tbs.some(tb => tb.id === action.textbox.id)) return tbs;
+          return tbs.filter(tb => tb.id !== action.textbox.id);
+        });
         setUndoBuffer(ub => [...ub, action]);
         break;
     }
@@ -913,7 +947,7 @@ const InfiniteCanvas: React.FC = () => {
               padding: 0,
               lineHeight: 1,
               zIndex: 10000,  
-            }}
+              }}
             value={editingTb.text}
             spellCheck={false}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -947,6 +981,18 @@ const InfiniteCanvas: React.FC = () => {
                     }]);
                     setRedoBuffer([]);
                   }
+                  setEditingInitialText(null);
+
+                  if (editingInitialText === "" && editingTb.text !== "") {
+                    setUndoBuffer(prev =>
+                      prev.map(action =>
+                        action.type === "addText" && action.textbox.id === editingTb.id
+                          ? { ...action, textbox: { ...action.textbox, text: editingTb.text } }
+                          : action
+                      )
+                    );
+                  }
+
                   setEditingInitialText(null);
                 }
               }, 0);
