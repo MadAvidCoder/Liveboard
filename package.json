@@ -1,6 +1,6 @@
 {
   "name": "liveboard",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Liveboard transforms your desktop into an endless canvas, making your background a living space for creativity, visual notes, and spontaneous inspiration. Always on your desktop, liveboard makes creativity just a click away!",
   "author": {
     "name": "MadAvidCoder",
@@ -17,7 +17,7 @@
   },
   "build": {
     "appId": "com.madavidcoder.liveboard",
-    "productName": "liveboard",
+    "productName": "Liveboard",
     "copyright": "Copyright © 2025 MadAvidCoder",
     "extends": null,
     "publish": null,
@@ -25,6 +25,7 @@
       "package.json",
       "build/**/*",
       "main/electron.js",
+      "main/preload.js",
       "tray_icon.*",
       "!node_modules/fsevents/**"
     ],
