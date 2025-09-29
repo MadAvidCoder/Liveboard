@@ -201,6 +201,10 @@ const InfiniteCanvas: React.FC = () => {
     setStickyNotes([]);
   };
 
+  function handleDeleteStickyNote(id: string) {
+    setStickyNotes(notes => notes.filter(n => n.id !== id));
+  }
+
   const handleStageStickyMouseDown = (e: any) => {
     if (activeTool !== "sticky") return;
     const stage = stageRef.current;
@@ -1105,6 +1109,7 @@ const InfiniteCanvas: React.FC = () => {
             )
           }
           onResize={handleResizeSticky}
+          onDelete={handleDeleteStickyNote}
         />
       ))}
     </div>

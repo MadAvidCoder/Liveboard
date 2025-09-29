@@ -136,7 +136,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         border: selected ? "2px solid #ffb700" : "1.5px solid #e8e28b",
         padding: "14px 14px 20px 14px",
         zIndex: 1000,
-        userSelect: "auto",
+        userSelect: "none",
         overflow: "hidden",
         cursor: dragging ? "move" : "grab",
         fontFamily: "Inter, Segoe UI, Arial, sans-serif",
@@ -148,6 +148,23 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       tabIndex={0}
       onDoubleClick={() => onStartEdit(id)}
     >
+      <button
+        style={{
+          position: "absolute",
+          top: 7,
+          right: 7,
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          fontSize: "15px",
+          color: "#d67b7b",
+          zIndex: 10,
+        }}
+        title="Delete sticky note"
+        onClick={e => { e.stopPropagation(); onDelete && onDelete(id); }}
+      >
+        {FaTrash({size: 14})}
+      </button>
       <div
         style={{
           position: "absolute",
@@ -193,7 +210,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
             outline: "none",
             background: "transparent",
             fontFamily: "inherit",
-            fontSize: "inherit",
+            fontSize: "0.8em",
             color: "#444",
             overflow: "hidden",
           }}
