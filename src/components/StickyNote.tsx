@@ -126,6 +126,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     <div
       style={{
         position: "absolute",
+        transform: `translate3d(0,0,0)`,
         left: x * stageScale + stagePos.x,
         top: y * stageScale + stagePos.y,
         width: width * stageScale,
