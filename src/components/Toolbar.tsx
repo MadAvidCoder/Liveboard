@@ -190,7 +190,15 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
   }, [showEraserOptions]);
 
   return (
-    <>
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        zIndex: 2000
+      }}
+    >
       <nav className="toolbar" aria-label="Canvas tools">
           <button
             ref={penButtonRef}
@@ -419,7 +427,7 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
           </div>
         </nav>
       )}
-    </>
+    </div>
   );
 }
 

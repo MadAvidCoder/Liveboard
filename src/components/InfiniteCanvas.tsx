@@ -748,51 +748,6 @@ const InfiniteCanvas: React.FC = () => {
         position: "relative"
       }}
     >
-      <Toolbar
-        activeTool={activeTool}
-        setTool={setActiveTool}
-        penColor={currentColor}
-        setPenColor={setCurrentColor}
-        penThickness={currentStrokeWidth}
-        setPenThickness={setCurrentStrokeWidth}
-        selectedShape={currentShape}
-        setSelectedShape={setCurrentShape}
-        textFontSize={currentTextFontSize}
-        setTextFontSize={setCurrentTextFontSize}
-        eraserRadius={eraserRadius}
-        setEraserRadius={setEraserRadius}
-        clearCanvas={clearCanvas}
-        undo={undo}
-        redo={redo}
-        theme={theme}
-        getCanvasColor={getCanvasColor}
-      />
-      <button
-        className="theme-toggle-btn"
-        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-        style={{
-          position: "fixed",
-          bottom: 22,
-          right: 22,
-          zIndex: 100,
-          background: "var(--surface-glass)",
-          color: "var(--on-surface)",
-          borderRadius: "50%",
-          width: 40,
-          height: 40,
-          border: "1.5px solid var(--border)",
-          boxShadow: "var(--shadow)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 22,
-          cursor: "pointer",
-          transition: "background var(--transition), color var(--transition), border var(--transition)"
-        }}
-        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      >
-        {theme === "dark" ? FaSun({size: 22}) : FaMoon({size: 22})}
-      </button>
       <DotCanvasOverlay
         stagePos={stagePos}
         stageScale={stageScale}
@@ -1117,6 +1072,51 @@ const InfiniteCanvas: React.FC = () => {
           onDelete={handleDeleteStickyNote}
         />
       ))}
+      <Toolbar
+        activeTool={activeTool}
+        setTool={setActiveTool}
+        penColor={currentColor}
+        setPenColor={setCurrentColor}
+        penThickness={currentStrokeWidth}
+        setPenThickness={setCurrentStrokeWidth}
+        selectedShape={currentShape}
+        setSelectedShape={setCurrentShape}
+        textFontSize={currentTextFontSize}
+        setTextFontSize={setCurrentTextFontSize}
+        eraserRadius={eraserRadius}
+        setEraserRadius={setEraserRadius}
+        clearCanvas={clearCanvas}
+        undo={undo}
+        redo={redo}
+        theme={theme}
+        getCanvasColor={getCanvasColor}
+      />
+      <button
+        className="theme-toggle-btn"
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        style={{
+          position: "fixed",
+          bottom: 22,
+          right: 22,
+          zIndex: 2000,
+          background: "var(--surface-glass)",
+          color: "var(--on-surface)",
+          borderRadius: "50%",
+          width: 40,
+          height: 40,
+          border: "1.5px solid var(--border)",
+          boxShadow: "var(--shadow)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          cursor: "pointer",
+          transition: "background var(--transition), color var(--transition), border var(--transition)"
+        }}
+        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      >
+        {theme === "dark" ? FaSun({size: 22}) : FaMoon({size: 22})}
+      </button>
     </div>
   );
 };
