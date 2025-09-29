@@ -1,6 +1,11 @@
 import React, { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { FaTrash } from "react-icons/fa";
+
+const RESIZE_HANDLE_SIZE = 22;
+const MIN_WIDTH = 120;
+const MIN_HEIGHT = 80;
 
 interface StickyNoteProps {
   id: string;
@@ -17,6 +22,10 @@ interface StickyNoteProps {
   onStartEdit: (id: string) => void;
   onDoneEdit: (id: string) => void;
   onMove: (id: string, newX: number, newY: number) => void;
+  onResize: (id: string, newWidth: number, newHeight: number) => void;
+  onDelete?: (id: string) => void;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 };
 
 const StickyNote: React.FC<StickyNoteProps> = ({
@@ -34,21 +43,30 @@ const StickyNote: React.FC<StickyNoteProps> = ({
   onStartEdit,
   onDoneEdit,
   onMove,
+  onResize,
+  onDelete,
+  selected,
+  onSelect,
 }) => {
-  const [dragging, setDragging] = useState(false);
+  const dragging = useRef(false);
+  const resizing = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const resizeStart = useRef({ width: width, height: height, mouseX: 0, mouseY: 0 });
 
-  function handleMouseDown(e: React.MouseEvent) {
-    setDragging(true);
+  function handleDragDown(e: React.MouseEvent) {
+    dragging.current = true;
     dragOffset.current = {
       x: e.clientX - (x * stageScale + stagePos.x),
       y: e.clientY - (y * stageScale + stagePos.y),
     };
+    onSelect && onSelect(id);
+    window.addEventListener("mousemove", handleGlobalDragMove);
+    window.addEventListener("mouseup", handleGlobalDragUp);
     e.stopPropagation();
   }
 
-  function handleMouseMove(e: React.MouseEvent) {
-    if (dragging) {
+  function handleGlobalDragMove(e: MouseEvent) {
+    if (dragging.current) {
       const screenX = e.clientX - dragOffset.current.x;
       const screenY = e.clientY - dragOffset.current.y;
       const x_canvas = (screenX - stagePos.x) / stageScale;
@@ -57,9 +75,52 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     }
   }
 
-  function handleMouseUp() {
-    setDragging(false);
+  function handleGlobalDragUp() {
+    dragging.current = false;
+    window.removeEventListener("mousemove", handleGlobalDragMove);
+    window.removeEventListener("mouseup", handleGlobalDragUp);
   }
+
+  function handleResizeDown(e: React.MouseEvent) {
+    resizing.current = true;
+    resizeStart.current = {
+      width,
+      height,
+      mouseX: e.clientX,
+      mouseY: e.clientY,
+    };
+    onSelect && onSelect(id);
+    window.addEventListener("mousemove", handleGlobalResizeMove);
+    window.addEventListener("mouseup", handleGlobalResizeUp);
+    e.stopPropagation();
+  }
+
+  function handleGlobalResizeMove(e: MouseEvent) {
+    if (resizing.current) {
+      const dx = (e.clientX - resizeStart.current.mouseX) / stageScale;
+      const dy = (e.clientY - resizeStart.current.mouseY) / stageScale;
+      onResize(
+        id,
+        Math.max(MIN_WIDTH, resizeStart.current.width + dx),
+        Math.max(MIN_HEIGHT, resizeStart.current.height + dy)
+      );
+    }
+  }
+
+  function handleGlobalResizeUp() {
+    resizing.current = false;
+    window.removeEventListener("mousemove", handleGlobalResizeMove);
+    window.removeEventListener("mouseup", handleGlobalResizeUp);
+  }
+
+  React.useEffect(() => {
+    return () => {
+      window.removeEventListener("mousemove", handleGlobalDragMove);
+      window.removeEventListener("mouseup", handleGlobalDragUp);
+      window.removeEventListener("mousemove", handleGlobalResizeMove);
+      window.removeEventListener("mouseup", handleGlobalResizeUp);
+    };
+  }, []);
 
   return (
     <div
@@ -69,20 +130,49 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         top: y * stageScale + stagePos.y,
         width: width * stageScale,
         height: height * stageScale,
-        background: color,
-        borderRadius: 8,
-        boxShadow: "0 2px 8px #0003",
-        padding: 12,
+        background: color || "#fffecd",
+        borderRadius: 15,
+        boxShadow: selected ? "0 4px 18px #d6c97b99" : "0 4px 14px #d6c97b66",
+        border: selected ? "2px solid #ffb700" : "1.5px solid #e8e28b",
+        padding: "14px 14px 20px 14px",
+        zIndex: 1000,
         userSelect: "auto",
         overflow: "hidden",
         cursor: dragging ? "move" : "grab",
+        fontFamily: "Inter, Segoe UI, Arial, sans-serif",
+        fontSize: "14px",
+        color: "#444",
+        transition: "box-shadow 0.15s, border 0.13s, background 0.13s",
       }}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      onMouseDown={handleDragDown}
+      tabIndex={0}
       onDoubleClick={() => onStartEdit(id)}
     >
+      <div
+        style={{
+          position: "absolute",
+          right: 2,
+          bottom: 2,
+          width: RESIZE_HANDLE_SIZE,
+          height: RESIZE_HANDLE_SIZE,
+          cursor: "nwse-resize",
+          zIndex: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+        onMouseDown={handleResizeDown}
+      >
+        <svg width="18" height="18">
+          <path
+            d="M4,16 Q16,16 16,4"
+            stroke="#d6c97b"
+            strokeWidth="2.5"
+            fill="none"
+            strokeLinecap="round"
+          />
+        </svg>
+      </div>
       {isEditing ? (
         <textarea
           value={content}
@@ -98,15 +188,14 @@ const StickyNote: React.FC<StickyNoteProps> = ({
           style={{
             width: "100%",
             height: "100%",
-            overflow: "hidden",
             resize: "none",
             border: "none",
             outline: "none",
             background: "transparent",
             fontFamily: "inherit",
-            fontSize: "0.8em",
-            color: "#333333",
-            userSelect: "none",
+            fontSize: "inherit",
+            color: "#444",
+            overflow: "hidden",
           }}
         />
       ) : (

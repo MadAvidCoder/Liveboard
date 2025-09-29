@@ -226,6 +226,14 @@ const InfiniteCanvas: React.FC = () => {
     ]);
   };
 
+  function handleResizeSticky(id: string, newWidth: number, newHeight: number) {
+    setStickyNotes(notes =>
+      notes.map(n =>
+        n.id === id ? { ...n, width: newWidth, height: newHeight } : n
+      )
+    );
+  }
+
   const handleStageTextMouseDown = (e: any) => {
     if (activeTool !== "text") return;
     const stage = stageRef.current;
@@ -1096,6 +1104,7 @@ const InfiniteCanvas: React.FC = () => {
               notes.map(n => n.id === id ? { ...n, x, y } : n)
             )
           }
+          onResize={handleResizeSticky}
         />
       ))}
     </div>
