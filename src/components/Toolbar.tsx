@@ -3,7 +3,7 @@ import { Tool, ShapeType } from "./InfiniteCanvas";
 import "./Toolbar.css";
 import "./ToolbarButton.css";
 import { FaPen, FaEraser, FaRegCircle, FaUndo, FaRedo, FaRegSquare, FaFont } from "react-icons/fa";
-import { FaMinus, FaArrowRight } from "react-icons/fa6";
+import { FaMinus, FaArrowRight, FaNoteSticky } from "react-icons/fa6";
 
 const COLORS = ["#222", "#4f8cff", "#e74c3c", "#2ecc40", "#f1c40f"];
 const THICKNESSES = [2, 4, 6, 8, 12];
@@ -215,6 +215,13 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
           onClick={() => handleShapeClick()}
         >
           {FaRegCircle({size: 18})}
+        </button>
+        <button
+          className={`toolbar-btn${activeTool === "sticky" ? " selected" : ""}`}
+          aria-label="Sticky Note tool"
+          onClick={() => setTool("sticky")}
+        >
+          {FaNoteSticky({size: 18})}
         </button>
         <button
           ref={textButtonRef}

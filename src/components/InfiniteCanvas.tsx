@@ -4,6 +4,7 @@ import Toolbar from "./Toolbar";
 import CanvasTextboxInput from "./CanvasTextboxInput";
 import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
+import StickyNote from "./StickyNote";
 import { KonvaEventObject } from "konva/lib/Node";
 import { FaMoon, FaSun } from "react-icons/fa";
 
@@ -25,7 +26,7 @@ type Shape = {
   type: ShapeType
 };
 
-export type Tool = "pen" | "eraser" | "shape" | "text" | null;
+export type Tool = "pen" | "eraser" | "shape" | "text" | "sticky" | null;
 
 type Textbox = {
   id: string;
@@ -34,6 +35,17 @@ type Textbox = {
   text: string;
   fontSize: number;
   color: string;
+  isEditing: boolean;
+};
+
+type StickyNoteType = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  content: string;
   isEditing: boolean;
 };
 
@@ -86,12 +98,18 @@ const InfiniteCanvas: React.FC = () => {
 
   const [lines, setLines] = useState<Shape[]>([]);
 
+  const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
+
   type UndoAction =
   | { type: "draw" }
   | { type: "erase" }
   | { type: "addText"; textbox: Textbox }
   | { type: "editText"; id: string; from: string; to: string }
-  | { type: "removeText"; textbox: Textbox };
+  | { type: "removeText"; textbox: Textbox }
+  | { type: "addSticky"; sticky: StickyNoteType }
+  | { type: "editSticky"; id: string; from: string; to: string }
+  | { type: "removeSticky"; sticky: StickyNoteType }
+  | { type: "moveSticky"; id: string; from: { x: number, y: number }, to: { x: number, y: number } };
 
   const [undoneLines, setUndoneLines] = useState<Shape[]>([]);
   const [undoBuffer, setUndoBuffer] = useState<UndoAction[]>([]);
@@ -126,6 +144,14 @@ const InfiniteCanvas: React.FC = () => {
 
   const [autosaveLoaded, setAutosaveLoaded] = useState(false);
   const [themeLoaded, setThemeLoaded] = useState(false);
+
+  function handleDoneEdit(id: string) {
+    setStickyNotes(notes =>
+      notes.map(n =>
+        n.id === id ? { ...n, isEditing: false } : n
+      )
+    );
+  }
 
   useEffect(() => {
     try {
@@ -172,6 +198,32 @@ const InfiniteCanvas: React.FC = () => {
     setRedoEraseBuffer([]);
     setUndoBuffer([]);
     setRedoBuffer([]);
+    setStickyNotes([]);
+  };
+
+  const handleStageStickyMouseDown = (e: any) => {
+    if (activeTool !== "sticky") return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+    const x = (pointer.x - stagePos.x) / stageScale;
+    const y = (pointer.y - stagePos.y) / stageScale;
+    const id = crypto.randomUUID();
+    setStickyNotes(notes => [
+      ...notes,
+      {
+        id,
+        x,
+        y,
+        width: 220,
+        height: 160,
+        color: "#ffe066",
+        content: "",
+        isEditing: true,
+      },
+    ]);
   };
 
   const handleStageTextMouseDown = (e: any) => {
@@ -239,6 +291,7 @@ const InfiniteCanvas: React.FC = () => {
         const data = JSON.parse(fileContent);
         setLines(data.lines || []);
         setTextboxes(data.textboxes || []);
+        setStickyNotes(data.stickyNotes || []);
         setStageScale(data.stageScale || INITIAL_SCALE);
         setStagePos(data.stagePos || { x: 0, y: 0 });
       }
@@ -253,12 +306,12 @@ const InfiniteCanvas: React.FC = () => {
     if (!autosaveLoaded) return;
     try {
       window.liveboardAPI.mkdir(window.liveboardAPI.dirname(autosavePath));
-      const data = JSON.stringify({ lines, textboxes, stageScale, stagePos });
+      const data = JSON.stringify({ lines, textboxes, stickyNotes, stageScale, stagePos });
       window.liveboardAPI.writeFile(autosavePath, data);
     } catch (err) {
       console.error("Autosave error:", err);
     }
-  }, [lines, textboxes, stageScale, stagePos, autosaveLoaded]);
+  }, [lines, textboxes, stickyNotes, stageScale, stagePos, autosaveLoaded]);
 
   useEffect(() => {
     textboxes.forEach(tb => {
@@ -743,8 +796,8 @@ const InfiniteCanvas: React.FC = () => {
         x={stagePos.x}
         y={stagePos.y}
         onWheel={handleWheel}
-        onMouseDown={activeTool === "text" ? handleStageTextMouseDown : undefined}
-        onPointerDown={activeTool !== "text" ? handlePointerDown : undefined}
+        onMouseDown={activeTool === "sticky" ? handleStageStickyMouseDown : activeTool === "text" ? handleStageTextMouseDown : undefined}
+        onPointerDown={activeTool === "text" ? undefined : activeTool === "sticky" ? undefined : handlePointerDown}
         onPointerLeave={handlePointerLeave}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1021,6 +1074,30 @@ const InfiniteCanvas: React.FC = () => {
           />
         );
       })()}
+      {stickyNotes.map(note => (
+        <StickyNote
+          key={note.id}
+          {...note}
+          stageScale={stageScale}
+          stagePos={stagePos}
+          onEdit={(id, newContent) =>
+            setStickyNotes(notes =>
+              notes.map(n => n.id === id ? { ...n, content: newContent } : n)
+            )
+          }
+          onStartEdit={id =>
+            setStickyNotes(notes =>
+              notes.map(n => n.id === id ? { ...n, isEditing: true } : n)
+            )
+          }
+          onDoneEdit={handleDoneEdit}
+          onMove={(id, x, y) =>
+            setStickyNotes(notes =>
+              notes.map(n => n.id === id ? { ...n, x, y } : n)
+            )
+          }
+        />
+      ))}
     </div>
   );
 };
