@@ -801,7 +801,6 @@ const InfiniteCanvas: React.FC = () => {
   }
 
   function handleStartEditStickyBody(id: string, initialContent: string) {
-    console.log("Start editing sticky body", id);
     setStickyNotes(notes =>
       notes.map(n => n.id === id ? { ...n, isEditingBody: true } : n)
     );

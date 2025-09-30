@@ -184,7 +184,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         padding: "14px 14px 20px 14px",
         zIndex: locked ? 1200 : 1000,
         userSelect: "none",
-        cursor: locked ? "default" : dragging ? "move" : "grab",
+        cursor: locked ? "default" : dragging.current ? "move" : "grab",
         fontFamily: "Inter, Segoe UI, Arial, sans-serif",
         fontSize: "14px",
         color: "#444",
