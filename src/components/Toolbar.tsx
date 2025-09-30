@@ -3,10 +3,19 @@ import { Tool, ShapeType } from "./InfiniteCanvas";
 import "./Toolbar.css";
 import "./ToolbarButton.css";
 import { FaPen, FaEraser, FaRegCircle, FaUndo, FaRedo, FaRegSquare, FaFont } from "react-icons/fa";
-import { FaMinus, FaArrowRight } from "react-icons/fa6";
+import { FaMinus, FaArrowRight, FaNoteSticky } from "react-icons/fa6";
 
 const COLORS = ["#222", "#4f8cff", "#e74c3c", "#2ecc40", "#f1c40f"];
 const THICKNESSES = [2, 4, 6, 8, 12];
+
+const STICKY_COLORS = [
+  "#ffe066",
+  "#ffd6e0",
+  "#b7e4c7",
+  "#cce3fa",
+  "#f6d6ae",
+  "#cccccc",
+];
 
 const shapeOptions = [
   { key: "line", icon: FaMinus, label: "Line" },
@@ -33,6 +42,8 @@ interface ToolbarProps {
   redo: () => void;
   theme: "light" | "dark";
   getCanvasColor: (color: string, theme: "light" | "dark") => string;
+  stickyColor: string;
+  setStickyColor: (color: string) => void;
 }
 
 function getBorderColor(color: string, theme: "light" | "dark") {
@@ -43,7 +54,7 @@ function getBorderColor(color: string, theme: "light" | "dark") {
   return color;
 }
 
-const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, eraserRadius, setEraserRadius, clearCanvas, undo, redo, theme, getCanvasColor }: ToolbarProps) => {
+const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, setPenThickness, selectedShape, setSelectedShape, textFontSize, setTextFontSize, eraserRadius, setEraserRadius, clearCanvas, undo, redo, theme, getCanvasColor, stickyColor, setStickyColor }: ToolbarProps) => {
   const [showPenOptions, setShowPenOptions] = useState(false);
   const [subToolbarPos, setSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
   const penButtonRef = useRef<HTMLButtonElement>(null);
@@ -63,6 +74,11 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
   const eraserButtonRef = useRef<HTMLButtonElement>(null);
   const eraserSubToolbarRef = useRef<HTMLDivElement>(null);
   const [eraserSubToolbarPos, setEraserSubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
+
+  const [showStickyOptions, setShowStickyOptions] = useState(false);
+  const stickyButtonRef = useRef<HTMLButtonElement>(null);
+  const stickySubToolbarRef = useRef<HTMLDivElement>(null);
+  const [stickySubToolbarPos, setStickySubToolbarPos] = useState<{top: number, left: number}>({top: 0, left: 0});
 
   useEffect(() => {
     function handleClickOutside(event: PointerEvent) {
@@ -101,6 +117,15 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
         !eraserSubToolbarRef.current.contains(event.target as Node)
       ) {
         setShowEraserOptions(false);
+      }
+      if (
+        showStickyOptions &&
+        stickyButtonRef.current &&
+        !stickyButtonRef.current.contains(event.target as Node) &&
+        stickySubToolbarRef.current &&
+        !stickySubToolbarRef.current.contains(event.target as Node)
+      ) {
+        setShowStickyOptions(false);
       }
     }
     document.addEventListener("pointerdown", handleClickOutside);
@@ -141,6 +166,15 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
     setTool("eraser");
     setShowEraserOptions(true);
+  };
+
+  const handleStickyClick = () => {
+    if (activeTool === "sticky") {
+      setShowStickyOptions((open) => !open);
+      return;
+    }
+    setTool("sticky");
+    setShowStickyOptions(true);
   };
 
   const handleToolClick = (tool: Tool) => {
@@ -189,8 +223,26 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
     }
   }, [showEraserOptions]);
 
+  useLayoutEffect(() => {
+    if (showStickyOptions && stickyButtonRef.current) {
+      const rect = stickyButtonRef.current.getBoundingClientRect();
+      setStickySubToolbarPos({
+        top: rect.bottom + 12,
+        left: rect.left + rect.width / 2
+      });
+    }
+  }, [showStickyOptions]);
+
   return (
-    <>
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        zIndex: 2000
+      }}
+    >
       <nav className="toolbar" aria-label="Canvas tools">
           <button
             ref={penButtonRef}
@@ -215,6 +267,14 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
           onClick={() => handleShapeClick()}
         >
           {FaRegCircle({size: 18})}
+        </button>
+        <button
+          ref={stickyButtonRef}
+          className={`toolbar-btn${activeTool === "sticky" ? " selected" : ""}`}
+          aria-label="Sticky Note tool"
+          onClick={handleStickyClick}
+        >
+          {FaNoteSticky({size: 18})}
         </button>
         <button
           ref={textButtonRef}
@@ -412,7 +472,61 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
           </div>
         </nav>
       )}
-    </>
+      {activeTool === "sticky" && showStickyOptions && (
+        <nav
+          className="sticky-subtoolbar"
+          ref={stickySubToolbarRef}
+          style={{
+            position: "fixed",
+            top: `${stickySubToolbarPos.top}px`,
+            left: `${stickySubToolbarPos.left}px`,
+            transform: "translateX(-50%)",
+            padding: "12px 6px",
+          }}
+        >
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            {STICKY_COLORS.slice(0, 3).map((color) => (
+              <button
+                key={color}
+                className="color-btn"
+                style={{
+                  background: color,
+                  border: "2px solid " + (color === stickyColor ? "#333" : "#fff"),
+                  borderRadius: "50%",
+                  width: 26,
+                  height: 26,
+                  cursor: "pointer",
+                  boxShadow: color === stickyColor ? "0 0 5px #888" : "none",
+                  transition: "box-shadow 0.15s, border 0.13s",
+                }}
+                aria-label={`Sticky color ${color}`}
+                onClick={() => setStickyColor(color)}
+              />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            {STICKY_COLORS.slice(3, 6).map((color) => (
+              <button
+                key={color}
+                className="color-btn"
+                style={{
+                  background: color,
+                  border: "2px solid " + (color === stickyColor ? "#333" : "#fff"),
+                  borderRadius: "50%",
+                  width: 26,
+                  height: 26,
+                  cursor: "pointer",
+                  boxShadow: color === stickyColor ? "0 0 5px #888" : "none",
+                  transition: "box-shadow 0.15s, border 0.13s",
+                }}
+                aria-label={`Sticky color ${color}`}
+                onClick={() => setStickyColor(color)}
+              />
+            ))}
+          </div>
+        </nav>
+      )}
+    </div>
   );
 }
 

@@ -4,6 +4,7 @@ import Toolbar from "./Toolbar";
 import CanvasTextboxInput from "./CanvasTextboxInput";
 import "./InfiniteCanvas.css";
 import DotCanvasOverlay from "./DotCanvasOverlay";
+import StickyNote from "./StickyNote";
 import { KonvaEventObject } from "konva/lib/Node";
 import { FaMoon, FaSun } from "react-icons/fa";
 
@@ -25,7 +26,7 @@ type Shape = {
   type: ShapeType
 };
 
-export type Tool = "pen" | "eraser" | "shape" | "text" | null;
+export type Tool = "pen" | "eraser" | "shape" | "text" | "sticky" | null;
 
 type Textbox = {
   id: string;
@@ -35,6 +36,20 @@ type Textbox = {
   fontSize: number;
   color: string;
   isEditing: boolean;
+};
+
+type StickyNoteType = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  content: string;
+  locked: boolean;
+  title: string;
+  isEditingTitle: boolean;
+  isEditingBody: boolean;
 };
 
 const INITIAL_SCALE = 1;
@@ -86,12 +101,22 @@ const InfiniteCanvas: React.FC = () => {
 
   const [lines, setLines] = useState<Shape[]>([]);
 
+  const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
+  const stickyDragStart = useRef<{ [id: string]: { x: number, y: number } }>({});
+  const stickyEditStart = useRef<{ [id: string]: string }>({});
+  const [stickyColor, setStickyColor] = useState("#ffe066");
+
   type UndoAction =
   | { type: "draw" }
   | { type: "erase" }
   | { type: "addText"; textbox: Textbox }
   | { type: "editText"; id: string; from: string; to: string }
-  | { type: "removeText"; textbox: Textbox };
+  | { type: "removeText"; textbox: Textbox }
+  | { type: "addSticky"; sticky: StickyNoteType }
+  | { type: "editSticky"; id: string; from: string; to: string }
+  | { type: "removeSticky"; sticky: StickyNoteType }
+  | { type: "moveSticky"; id: string; from: { x: number, y: number }, to: { x: number, y: number } }
+  | { type: "resizeSticky"; id: string; from: { width: number, height: number }, to: { width: number, height: number } };
 
   const [undoneLines, setUndoneLines] = useState<Shape[]>([]);
   const [undoBuffer, setUndoBuffer] = useState<UndoAction[]>([]);
@@ -126,6 +151,72 @@ const InfiniteCanvas: React.FC = () => {
 
   const [autosaveLoaded, setAutosaveLoaded] = useState(false);
   const [themeLoaded, setThemeLoaded] = useState(false);
+
+  function handleAddStickyNote(x: number, y: number) {
+    const id = crypto.randomUUID();
+    const newSticky: StickyNoteType = {
+      id,
+      x,
+      y,
+      width: 220,
+      height: 160,
+      color: stickyColor,
+      content: "",
+      isEditingBody: true,
+      isEditingTitle: false,
+      locked: false,
+      title: "",
+    };
+    setStickyNotes(notes => [...notes, newSticky]);
+    setUndoBuffer(undo => [...undo, { type: "addSticky", sticky: newSticky }]);
+    setRedoBuffer([]);
+  }
+
+  function handleStartStickyMove(id: string, x: number, y: number) {
+    stickyDragStart.current[id] = { x, y };
+  }
+
+  function handleEndStickyMove(id: string, newX: number, newY: number) {
+    const start = stickyDragStart.current[id];
+    if (start && (start.x !== newX || start.y !== newY)) {
+      setUndoBuffer(undo => [
+        ...undo,
+        { type: "moveSticky", id, from: { x: start.x, y: start.y }, to: { x: newX, y: newY } }
+      ]);
+      setRedoBuffer([]);
+    }
+    delete stickyDragStart.current[id];
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n));
+  }
+
+  function handleEditStickyTitle(id: string, newTitle: string) {
+    setStickyNotes(notes =>
+      notes.map(n =>
+        n.id === id ? { ...n, title: newTitle } : n
+      )
+    );
+  }
+
+  function handleMoveStickyNote(id: string, newX: number, newY: number) {
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n));
+  }
+
+  function handleEditSticky(id: string, newContent: string) {
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: newContent } : n));
+  }
+
+  function handleDoneEdit(id: string, finalContent: string) {
+    const initial = stickyEditStart.current[id];
+    if (initial !== undefined && initial !== finalContent) {
+      setUndoBuffer(undo => [
+        ...undo,
+        { type: "editSticky", id, from: initial, to: finalContent }
+      ]);
+      setRedoBuffer([]);
+    }
+    delete stickyEditStart.current[id];
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: finalContent, isEditingBody: false } : n));
+  }
 
   useEffect(() => {
     try {
@@ -172,7 +263,42 @@ const InfiniteCanvas: React.FC = () => {
     setRedoEraseBuffer([]);
     setUndoBuffer([]);
     setRedoBuffer([]);
+    setStickyNotes([]);
   };
+
+  function handleDeleteStickyNote(id: string) {
+    setStickyNotes(notes => {
+      const sticky = notes.find(n => n.id === id);
+      if (sticky) setUndoBuffer(undo => [...undo, { type: "removeSticky", sticky }]);
+      setRedoBuffer([]);
+      return notes.filter(n => n.id !== id);
+    });
+  }
+
+  const handleStageStickyMouseDown = (e: any) => {
+    if (activeTool !== "sticky") return;
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+    const x = (pointer.x - stagePos.x) / stageScale;
+    const y = (pointer.y - stagePos.y) / stageScale;
+    
+    handleAddStickyNote(x, y);
+  };
+
+  function handleResizeSticky(id: string, newWidth: number, newHeight: number) {
+    setStickyNotes(notes => {
+      const sticky = notes.find(n => n.id === id);
+      if (sticky) setUndoBuffer(undo => [
+        ...undo,
+        { type: "resizeSticky", id, from: { width: sticky.width, height: sticky.height }, to: { width: newWidth, height: newHeight } }
+      ]);
+      setRedoBuffer([]);
+      return notes.map(n => n.id === id ? { ...n, width: newWidth, height: newHeight } : n);
+    });
+  }
 
   const handleStageTextMouseDown = (e: any) => {
     if (activeTool !== "text") return;
@@ -239,6 +365,7 @@ const InfiniteCanvas: React.FC = () => {
         const data = JSON.parse(fileContent);
         setLines(data.lines || []);
         setTextboxes(data.textboxes || []);
+        setStickyNotes(data.stickyNotes || []);
         setStageScale(data.stageScale || INITIAL_SCALE);
         setStagePos(data.stagePos || { x: 0, y: 0 });
       }
@@ -253,12 +380,12 @@ const InfiniteCanvas: React.FC = () => {
     if (!autosaveLoaded) return;
     try {
       window.liveboardAPI.mkdir(window.liveboardAPI.dirname(autosavePath));
-      const data = JSON.stringify({ lines, textboxes, stageScale, stagePos });
+      const data = JSON.stringify({ lines, textboxes, stickyNotes, stageScale, stagePos });
       window.liveboardAPI.writeFile(autosavePath, data);
     } catch (err) {
       console.error("Autosave error:", err);
     }
-  }, [lines, textboxes, stageScale, stagePos, autosaveLoaded]);
+  }, [lines, textboxes, stickyNotes, stageScale, stagePos, autosaveLoaded]);
 
   useEffect(() => {
     textboxes.forEach(tb => {
@@ -312,6 +439,7 @@ const InfiniteCanvas: React.FC = () => {
       if (e.key === 'e') setActiveTool('eraser');
       if (e.key === 't') setActiveTool('text');
       if (e.key === 's') setActiveTool('shape');
+      if (e.key === 'y') setActiveTool('sticky');
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -385,6 +513,32 @@ const InfiniteCanvas: React.FC = () => {
       case "removeText":
         setTextboxes(tbs => [...tbs, action.textbox]);
         setRedoBuffer(rb => [...rb, action]);
+        break
+      case "addSticky":
+        setStickyNotes(notes => notes.filter(n => n.id !== action.sticky.id));
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "removeSticky":
+        setStickyNotes(notes => [...notes, action.sticky]);
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "moveSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, x: action.from.x, y: action.from.y } : n
+        ));
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "resizeSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, width: action.from.width, height: action.from.height } : n
+        ));
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "editSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, content: action.from } : n
+        ));
+        setRedoBuffer(redos => [...redos, action]);
         break;
     }
   };
@@ -428,6 +582,32 @@ const InfiniteCanvas: React.FC = () => {
           return tbs.filter(tb => tb.id !== action.textbox.id);
         });
         setUndoBuffer(ub => [...ub, action]);
+        break;
+      case "addSticky":
+        setStickyNotes(notes => [...notes, action.sticky]);
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "removeSticky":
+        setStickyNotes(notes => notes.filter(n => n.id !== action.sticky.id));
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "moveSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, x: action.to.x, y: action.to.y } : n
+        ));
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "resizeSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, width: action.to.width, height: action.to.height } : n
+        ));
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "editSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, content: action.to } : n
+        ));
+        setUndoBuffer(undos => [...undos, action]);
         break;
     }
   };
@@ -593,6 +773,46 @@ const InfiniteCanvas: React.FC = () => {
     });
   };
 
+  function handleToggleStickyLock(id: string) {
+    setStickyNotes(notes =>
+      notes.map(n =>
+        n.id === id
+          ? {
+              ...n,
+              locked: !n.locked,
+              isEditingTitle: false,
+              isEditingBody: false,
+            }
+          : n
+      )
+    );
+  }
+
+  function handleStartEditStickyTitle(id: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, isEditingTitle: true } : n)
+    );
+  }
+
+  function handleDoneEditStickyTitle(id: string, newTitle: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, title: newTitle, isEditingTitle: false } : n)
+    );
+  }
+
+  function handleStartEditStickyBody(id: string, initialContent: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, isEditingBody: true } : n)
+    );
+    stickyEditStart.current[id] = initialContent;
+  }
+
+  function handleDoneEditStickyBody(id: string, newContent: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, content: newContent, isEditingBody: false } : n)
+    );
+  }
+
   const handleTouchStart = (e: KonvaEventObject<TouchEvent>) => {
     const nativeEvent = e.evt;
     if (nativeEvent.touches && nativeEvent.touches.length === 2) {
@@ -676,53 +896,13 @@ const InfiniteCanvas: React.FC = () => {
 
   return (
     <div
-      style={{ width: "100vw", height: "100vh", position: "relative" }}
+      style={{
+        width: "100vw",
+        height: "100vh", 
+        overflow: "hidden",
+        position: "relative"
+      }}
     >
-      <Toolbar
-        activeTool={activeTool}
-        setTool={setActiveTool}
-        penColor={currentColor}
-        setPenColor={setCurrentColor}
-        penThickness={currentStrokeWidth}
-        setPenThickness={setCurrentStrokeWidth}
-        selectedShape={currentShape}
-        setSelectedShape={setCurrentShape}
-        textFontSize={currentTextFontSize}
-        setTextFontSize={setCurrentTextFontSize}
-        eraserRadius={eraserRadius}
-        setEraserRadius={setEraserRadius}
-        clearCanvas={clearCanvas}
-        undo={undo}
-        redo={redo}
-        theme={theme}
-        getCanvasColor={getCanvasColor}
-      />
-      <button
-        className="theme-toggle-btn"
-        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-        style={{
-          position: "fixed",
-          bottom: 22,
-          right: 22,
-          zIndex: 100,
-          background: "var(--surface-glass)",
-          color: "var(--on-surface)",
-          borderRadius: "50%",
-          width: 40,
-          height: 40,
-          border: "1.5px solid var(--border)",
-          boxShadow: "var(--shadow)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 22,
-          cursor: "pointer",
-          transition: "background var(--transition), color var(--transition), border var(--transition)"
-        }}
-        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
-      >
-        {theme === "dark" ? FaSun({size: 22}) : FaMoon({size: 22})}
-      </button>
       <DotCanvasOverlay
         stagePos={stagePos}
         stageScale={stageScale}
@@ -743,8 +923,8 @@ const InfiniteCanvas: React.FC = () => {
         x={stagePos.x}
         y={stagePos.y}
         onWheel={handleWheel}
-        onMouseDown={activeTool === "text" ? handleStageTextMouseDown : undefined}
-        onPointerDown={activeTool !== "text" ? handlePointerDown : undefined}
+        onMouseDown={activeTool === "sticky" ? handleStageStickyMouseDown : activeTool === "text" ? handleStageTextMouseDown : undefined}
+        onPointerDown={activeTool === "text" ? undefined : activeTool === "sticky" ? undefined : handlePointerDown}
         onPointerLeave={handlePointerLeave}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -1021,6 +1201,76 @@ const InfiniteCanvas: React.FC = () => {
           />
         );
       })()}
+      {stickyNotes.map(note => (
+        <StickyNote
+          key={note.id}
+          {...note}
+          stageScale={stageScale}
+          stagePos={stagePos}
+          onEdit={handleEditSticky}
+          onStartEdit={handleStartEditStickyBody}
+          onDoneEdit={handleDoneEdit}
+          onStartMove={handleStartStickyMove}
+          onMove={handleMoveStickyNote}
+          onDoneMove={handleEndStickyMove}
+          onResize={handleResizeSticky}
+          onDelete={handleDeleteStickyNote}
+          onToggleLock={handleToggleStickyLock}
+          onEditTitle={handleEditStickyTitle}
+          onStartEditTitle={handleStartEditStickyTitle}
+          isEditingTitle={note.isEditingTitle}
+          onDoneEditTitle={handleDoneEditStickyTitle}
+          isEditingBody={note.isEditingBody}
+          locked={note.locked}
+        />
+      ))}
+      <Toolbar
+        activeTool={activeTool}
+        setTool={setActiveTool}
+        penColor={currentColor}
+        setPenColor={setCurrentColor}
+        penThickness={currentStrokeWidth}
+        setPenThickness={setCurrentStrokeWidth}
+        selectedShape={currentShape}
+        setSelectedShape={setCurrentShape}
+        textFontSize={currentTextFontSize}
+        setTextFontSize={setCurrentTextFontSize}
+        eraserRadius={eraserRadius}
+        setEraserRadius={setEraserRadius}
+        clearCanvas={clearCanvas}
+        undo={undo}
+        redo={redo}
+        theme={theme}
+        getCanvasColor={getCanvasColor}
+        stickyColor={stickyColor}
+        setStickyColor={setStickyColor}
+      />
+      <button
+        className="theme-toggle-btn"
+        aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+        style={{
+          position: "fixed",
+          bottom: 22,
+          right: 22,
+          zIndex: 2000,
+          background: "var(--surface-glass)",
+          color: "var(--on-surface)",
+          borderRadius: "50%",
+          width: 40,
+          height: 40,
+          border: "1.5px solid var(--border)",
+          boxShadow: "var(--shadow)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          cursor: "pointer",
+          transition: "background var(--transition), color var(--transition), border var(--transition)"
+        }}
+        onClick={() => setTheme(theme === "light" ? "dark" : "light")}
+      >
+        {theme === "dark" ? FaSun({size: 22}) : FaMoon({size: 22})}
+      </button>
     </div>
   );
 };
