@@ -47,7 +47,9 @@ type StickyNoteType = {
   color: string;
   content: string;
   locked: boolean;
-  isEditing: boolean;
+  title: string;
+  isEditingTitle: boolean;
+  isEditingBody: boolean;
 };
 
 const INITIAL_SCALE = 1;
@@ -160,8 +162,10 @@ const InfiniteCanvas: React.FC = () => {
       height: 160,
       color: stickyColor,
       content: "",
-      isEditing: true,
+      isEditingBody: true,
+      isEditingTitle: false,
       locked: false,
+      title: "",
     };
     setStickyNotes(notes => [...notes, newSticky]);
     setUndoBuffer(undo => [...undo, { type: "addSticky", sticky: newSticky }]);
@@ -185,19 +189,20 @@ const InfiniteCanvas: React.FC = () => {
     setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n));
   }
 
+  function handleEditStickyTitle(id: string, newTitle: string) {
+    setStickyNotes(notes =>
+      notes.map(n =>
+        n.id === id ? { ...n, title: newTitle } : n
+      )
+    );
+  }
+
   function handleMoveStickyNote(id: string, newX: number, newY: number) {
     setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n));
   }
 
   function handleEditSticky(id: string, newContent: string) {
     setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: newContent } : n));
-  }
-
-  function handleStartEditSticky(id: string, initialContent: string) {
-    setStickyNotes(notes =>
-      notes.map(n => n.id === id ? { ...n, isEditing: true } : n)
-    );
-    stickyEditStart.current[id] = initialContent;
   }
 
   function handleDoneEdit(id: string, finalContent: string) {
@@ -210,7 +215,7 @@ const InfiniteCanvas: React.FC = () => {
       setRedoBuffer([]);
     }
     delete stickyEditStart.current[id];
-    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: finalContent, isEditing: false } : n));
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: finalContent, isEditingBody: false } : n));
   }
 
   useEffect(() => {
@@ -768,6 +773,47 @@ const InfiniteCanvas: React.FC = () => {
     });
   };
 
+  function handleToggleStickyLock(id: string) {
+    setStickyNotes(notes =>
+      notes.map(n =>
+        n.id === id
+          ? {
+              ...n,
+              locked: !n.locked,
+              isEditingTitle: false,
+              isEditingBody: false,
+            }
+          : n
+      )
+    );
+  }
+
+  function handleStartEditStickyTitle(id: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, isEditingTitle: true } : n)
+    );
+  }
+
+  function handleDoneEditStickyTitle(id: string, newTitle: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, title: newTitle, isEditingTitle: false } : n)
+    );
+  }
+
+  function handleStartEditStickyBody(id: string, initialContent: string) {
+    console.log("Start editing sticky body", id);
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, isEditingBody: true } : n)
+    );
+    stickyEditStart.current[id] = initialContent;
+  }
+
+  function handleDoneEditStickyBody(id: string, newContent: string) {
+    setStickyNotes(notes =>
+      notes.map(n => n.id === id ? { ...n, content: newContent, isEditingBody: false } : n)
+    );
+  }
+
   const handleTouchStart = (e: KonvaEventObject<TouchEvent>) => {
     const nativeEvent = e.evt;
     if (nativeEvent.touches && nativeEvent.touches.length === 2) {
@@ -1163,13 +1209,20 @@ const InfiniteCanvas: React.FC = () => {
           stageScale={stageScale}
           stagePos={stagePos}
           onEdit={handleEditSticky}
-          onStartEdit={handleStartEditSticky}
+          onStartEdit={handleStartEditStickyBody}
           onDoneEdit={handleDoneEdit}
           onStartMove={handleStartStickyMove}
           onMove={handleMoveStickyNote}
           onDoneMove={handleEndStickyMove}
           onResize={handleResizeSticky}
           onDelete={handleDeleteStickyNote}
+          onToggleLock={handleToggleStickyLock}
+          onEditTitle={handleEditStickyTitle}
+          onStartEditTitle={handleStartEditStickyTitle}
+          isEditingTitle={note.isEditingTitle}
+          onDoneEditTitle={handleDoneEditStickyTitle}
+          isEditingBody={note.isEditingBody}
+          locked={note.locked}
         />
       ))}
       <Toolbar

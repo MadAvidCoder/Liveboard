@@ -1,7 +1,7 @@
 import React, { useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { FaTrash } from "react-icons/fa";
+import { FaTrash, FaThumbtack } from "react-icons/fa";
 
 const RESIZE_HANDLE_SIZE = 22;
 const MIN_WIDTH = 120;
@@ -27,7 +27,8 @@ interface StickyNoteProps {
   height: number;
   color: string;
   content: string;
-  isEditing: boolean;
+  isEditingTitle: boolean;
+  isEditingBody: boolean;
   stageScale: number;
   stagePos: { x: number; y: number };
   onEdit: (id: string, newContent: string) => void;
@@ -37,9 +38,15 @@ interface StickyNoteProps {
   onMove: (id: string, newX: number, newY: number) => void;
   onDoneMove: (id: string, newX: number, newY: number) => void;
   onResize: (id: string, newWidth: number, newHeight: number) => void;
-  onDelete?: (id: string) => void;
+  onDelete: (id: string) => void;
   selected?: boolean;
   onSelect?: (id: string) => void;
+  onToggleLock: (id: string) => void;
+  title: string;
+  onEditTitle: (id: string, newTitle: string) => void;
+  onStartEditTitle: (id: string) => void;
+  onDoneEditTitle: (id: string, finalTitle: string) => void;
+  locked: boolean;
 };
 
 const StickyNote: React.FC<StickyNoteProps> = ({
@@ -50,7 +57,8 @@ const StickyNote: React.FC<StickyNoteProps> = ({
   height,
   color,
   content,
-  isEditing,
+  isEditingTitle,
+  isEditingBody,
   stageScale,
   stagePos,
   onEdit,
@@ -63,13 +71,21 @@ const StickyNote: React.FC<StickyNoteProps> = ({
   onDelete,
   selected,
   onSelect,
+  onToggleLock,
+  title,
+  onEditTitle,
+  onStartEditTitle,
+  onDoneEditTitle,
+  locked,
 }) => {
   const dragging = useRef(false);
   const resizing = useRef(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const resizeStart = useRef({ width: width, height: height, mouseX: 0, mouseY: 0 });
 
+
   function handleDragDown(e: React.MouseEvent) {
+    if (locked) return;
     dragging.current = true;
     dragOffset.current = {
       x: e.clientX - (x * stageScale + stagePos.x),
@@ -106,6 +122,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
   }
 
   function handleResizeDown(e: React.MouseEvent) {
+    if (locked) return;
     resizing.current = true;
     resizeStart.current = {
       width,
@@ -153,6 +170,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         transform: `translate3d(0,0,0)`,
         left: x * stageScale + stagePos.x,
         top: y * stageScale + stagePos.y,
+        overflow: "hidden",
         width: width * stageScale,
         height: height * stageScale,
         background: color,
@@ -164,9 +182,9 @@ const StickyNote: React.FC<StickyNoteProps> = ({
           ? `2px solid ${getStickyBorderColor(color)}`
           : `1px solid ${getStickyBorderColor(color)}`,
         padding: "14px 14px 20px 14px",
-        zIndex: 1000,
+        zIndex: locked ? 1200 : 1000,
         userSelect: "none",
-        cursor: dragging ? "move" : "grab",
+        cursor: locked ? "default" : dragging ? "move" : "grab",
         fontFamily: "Inter, Segoe UI, Arial, sans-serif",
         fontSize: "14px",
         color: "#444",
@@ -174,10 +192,35 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       }}
       onMouseDown={handleDragDown}
       tabIndex={0}
-      onDoubleClick={() => {
-        onStartEdit(id, content);
+      onClick={e => {
+        if (!locked && !isEditingBody && !isEditingTitle) onStartEdit(id, content);
       }}
     >
+      <button
+        style={{
+          position: "absolute",
+          top: 9,
+          left: 9,
+          border: "none",
+          background: "none",
+          cursor: "pointer",
+          fontSize: "16px",
+          color: locked ? "#0f68e4ff" : "#88888F",
+          zIndex: 10,
+          padding: 0,
+          margin: 0,
+          lineHeight: 1,
+        }}
+        title={locked ? "Unpin sticky note" : "Pin sticky note"}
+        onClick={e => {
+          e.stopPropagation();
+          onToggleLock && onToggleLock(id);
+        }}
+      >
+        <span style={{display: "inline-block", transform: "rotate(-34deg)"}}>
+          {FaThumbtack({size: 16})}
+        </span>
+      </button>
       <button
         style={{
           position: "absolute",
@@ -195,6 +238,62 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       >
         {FaTrash({size: 14})}
       </button>
+      <div
+        style={{
+          position: "absolute",
+          top: 5,
+          left: 29,
+          right: 32,
+          height: 22,
+          display: "flex",
+          alignItems: "center",
+          background: "transparent",
+          zIndex: 11,
+        }}
+        onClick={e => {
+          e.stopPropagation();
+          if (!locked && !isEditingTitle) onStartEditTitle(id);
+        }}
+      >
+        {isEditingTitle && !locked ? (
+          <input
+            type="text"
+            value={title}
+            autoFocus
+            onBlur={() => onDoneEditTitle(id, title)}
+            onKeyDown={e => {
+              if (e.key === "Enter") onDoneEditTitle(id, title);
+            }}
+            onChange={e => onEditTitle(id, e.target.value)}
+            placeholder="Untitled"
+            style={{
+              width: "100%",
+              border: "none",
+              background: "transparent",
+              fontWeight: "bold",
+              fontSize: "1em",
+              color: "#444",
+              outline: "none",
+              pointerEvents: "auto"
+            }}
+          />
+        ) : (
+          <span
+            style={{
+              fontWeight: "bold",
+              fontSize: "1em",
+              color: "#444",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              textOverflow: "ellipsis",
+              pointerEvents: "auto"
+            }}
+            title={title}
+          >
+            {title || <span style={{opacity:0.5}}>Untitled</span>}
+          </span>
+        )}
+      </div>
       <div
         style={{
           position: "absolute",
@@ -220,8 +319,9 @@ const StickyNote: React.FC<StickyNoteProps> = ({
           />
         </svg>
       </div>
-      {isEditing ? (
+      {isEditingBody ? (
         <textarea
+          disabled={locked}
           value={content}
           autoFocus
           onChange={e => onEdit(id, e.target.value)}
@@ -233,6 +333,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
             }
           }}
           style={{
+            paddingTop: "16px",
             width: "100%",
             height: "100%",
             resize: "none",
@@ -240,25 +341,29 @@ const StickyNote: React.FC<StickyNoteProps> = ({
             outline: "none",
             background: "transparent",
             fontFamily: "inherit",
-            fontSize: "0.8em",
+            fontSize: "0.85em",
             color: "#444",
             overflow: "hidden",
           }}
         />
       ) : (
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            h1: ({node, ...props}) => <h1 style={{fontSize:"1.1em",margin:"0.5em 0"}} {...props} />,
-            h2: ({node, ...props}) => <h2 style={{fontSize:"0.95em",margin:"0.4em 0"}} {...props} />,
-            h3: ({node, ...props}) => <h3 style={{fontSize:"0.85em",margin:"0.3em 0"}} {...props} />,
-            p: ({node, ...props}) => <p style={{fontSize:"0.85em", margin:"0.3em 0"}} {...props} />,
-            ul: ({node, ...props}) => <ul style={{paddingLeft:"0.8em"}} {...props} />,
-            li: ({node, ...props}) => <li style={{fontSize: "0.85em", marginBottom:"0.33em"}} {...props} />,
-            code: ({node, ...props}) => <code style={{background:"#fff6b0",padding:"2px 4px",borderRadius:"5px", fontSize:"0.92em"}} {...props} />,
-        }}>
-          {content}
-        </ReactMarkdown>
+        <div
+          style={{ marginTop: "18px", cursor: locked ? "default" : "text" }}
+        >
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({node, ...props}) => <h1 style={{fontSize:"1.1em",margin:"0.5em 0"}} {...props} />,
+              h2: ({node, ...props}) => <h2 style={{fontSize:"0.95em",margin:"0.4em 0"}} {...props} />,
+              h3: ({node, ...props}) => <h3 style={{fontSize:"0.875em",margin:"0.3em 0"}} {...props} />,
+              p: ({node, ...props}) => <p style={{fontSize:"0.875em", margin:"0.3em 0"}} {...props} />,
+              ul: ({node, ...props}) => <ul style={{paddingLeft:"0.8em"}} {...props} />,
+              li: ({node, ...props}) => <li style={{fontSize: "0.875em", marginBottom:"0.33em"}} {...props} />,
+              code: ({node, ...props}) => <code style={{background:"#fff6b0",padding:"2px 4px",borderRadius:"5px", fontSize:"0.92em"}} {...props} />,
+          }}>
+            {content}
+          </ReactMarkdown>
+        </div>
       )}
     </div>
   );
