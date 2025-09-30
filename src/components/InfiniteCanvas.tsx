@@ -46,6 +46,7 @@ type StickyNoteType = {
   height: number;
   color: string;
   content: string;
+  locked: boolean;
   isEditing: boolean;
 };
 
@@ -101,6 +102,7 @@ const InfiniteCanvas: React.FC = () => {
   const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
   const stickyDragStart = useRef<{ [id: string]: { x: number, y: number } }>({});
   const stickyEditStart = useRef<{ [id: string]: string }>({});
+  const [stickyColor, setStickyColor] = useState("#ffe066");
 
   type UndoAction =
   | { type: "draw" }
@@ -156,9 +158,10 @@ const InfiniteCanvas: React.FC = () => {
       y,
       width: 220,
       height: 160,
-      color: "#ffe066",
+      color: stickyColor,
       content: "",
       isEditing: true,
+      locked: false,
     };
     setStickyNotes(notes => [...notes, newSticky]);
     setUndoBuffer(undo => [...undo, { type: "addSticky", sticky: newSticky }]);
@@ -1187,6 +1190,8 @@ const InfiniteCanvas: React.FC = () => {
         redo={redo}
         theme={theme}
         getCanvasColor={getCanvasColor}
+        stickyColor={stickyColor}
+        setStickyColor={setStickyColor}
       />
       <button
         className="theme-toggle-btn"

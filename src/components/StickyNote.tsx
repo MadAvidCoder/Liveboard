@@ -7,6 +7,18 @@ const RESIZE_HANDLE_SIZE = 22;
 const MIN_WIDTH = 120;
 const MIN_HEIGHT = 80;
 
+function getStickyBorderColor(color: string) {
+  const map: Record<string, string> = {
+    "#ffe066": "#fff6b0", // yellow
+    "#cce3fa": "#eaf4fb", // blue
+    "#ffd6e0": "#fff1f6", // pink
+    "#b7e4c7": "#e6f7ed", // green
+    "#f6d6ae": "#faecd6", // beige
+    "#cccccc": "#eaeaea", // gray
+  };
+  return map[color] || "#f0f0f0";
+}
+
 interface StickyNoteProps {
   id: string;
   x: number;
@@ -143,10 +155,14 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         top: y * stageScale + stagePos.y,
         width: width * stageScale,
         height: height * stageScale,
-        background: color || "#fffecd",
+        background: color,
         borderRadius: 15,
-        boxShadow: selected ? "0 4px 18px #d6c97b99" : "0 4px 14px #d6c97b66",
-        border: selected ? "2px solid #ffb700" : "1.5px solid #e8e28b",
+        boxShadow: selected
+          ? `0 4px 18px ${color}99`
+          : `0 4px 14px ${color}66`,
+        border: selected
+          ? `2px solid ${getStickyBorderColor(color)}`
+          : `1px solid ${getStickyBorderColor(color)}`,
         padding: "14px 14px 20px 14px",
         zIndex: 1000,
         userSelect: "none",
@@ -197,7 +213,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         <svg width="18" height="18">
           <path
             d="M4,16 Q16,16 16,4"
-            stroke="#d6c97b"
+            stroke={getStickyBorderColor(color)}
             strokeWidth="2.5"
             fill="none"
             strokeLinecap="round"
