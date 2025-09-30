@@ -21,7 +21,9 @@ interface StickyNoteProps {
   onEdit: (id: string, newContent: string) => void;
   onStartEdit: (id: string) => void;
   onDoneEdit: (id: string) => void;
+  onStartMove: (id: string, x: number, y: number) => void;
   onMove: (id: string, newX: number, newY: number) => void;
+  onDoneMove: (id: string, newX: number, newY: number) => void;
   onResize: (id: string, newWidth: number, newHeight: number) => void;
   onDelete?: (id: string) => void;
   selected?: boolean;
@@ -42,7 +44,9 @@ const StickyNote: React.FC<StickyNoteProps> = ({
   onEdit,
   onStartEdit,
   onDoneEdit,
+  onStartMove,
   onMove,
+  onDoneMove,
   onResize,
   onDelete,
   selected,
@@ -60,6 +64,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       y: e.clientY - (y * stageScale + stagePos.y),
     };
     onSelect && onSelect(id);
+    onStartMove(id, x, y);
     window.addEventListener("mousemove", handleGlobalDragMove);
     window.addEventListener("mouseup", handleGlobalDragUp);
     e.stopPropagation();
@@ -75,7 +80,14 @@ const StickyNote: React.FC<StickyNoteProps> = ({
     }
   }
 
-  function handleGlobalDragUp() {
+  function handleGlobalDragUp(e: MouseEvent) {
+    if (dragging.current) {
+      const screenX = e.clientX - dragOffset.current.x;
+      const screenY = e.clientY - dragOffset.current.y;
+      const x_canvas = (screenX - stagePos.x) / stageScale;
+      const y_canvas = (screenY - stagePos.y) / stageScale;
+      onDoneMove(id, x_canvas, y_canvas);
+    }
     dragging.current = false;
     window.removeEventListener("mousemove", handleGlobalDragMove);
     window.removeEventListener("mouseup", handleGlobalDragUp);

@@ -99,6 +99,7 @@ const InfiniteCanvas: React.FC = () => {
   const [lines, setLines] = useState<Shape[]>([]);
 
   const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
+  const stickyDragStart = useRef<{ [id: string]: { x: number, y: number } }>({});
 
   type UndoAction =
   | { type: "draw" }
@@ -163,16 +164,25 @@ const InfiniteCanvas: React.FC = () => {
     setRedoBuffer([]);
   }
 
-  function handleMoveStickyNote(id: string, newX: number, newY: number) {
-    setStickyNotes(notes => {
-      const sticky = notes.find(n => n.id === id);
-      if (sticky) setUndoBuffer(undo => [
+  function handleStartStickyMove(id: string, x: number, y: number) {
+    stickyDragStart.current[id] = { x, y };
+  }
+
+  function handleEndStickyMove(id: string, newX: number, newY: number) {
+    const start = stickyDragStart.current[id];
+    if (start && (start.x !== newX || start.y !== newY)) {
+      setUndoBuffer(undo => [
         ...undo,
-        { type: "moveSticky", id, from: { x: sticky.x, y: sticky.y }, to: { x: newX, y: newY } }
+        { type: "moveSticky", id, from: { x: start.x, y: start.y }, to: { x: newX, y: newY } }
       ]);
       setRedoBuffer([]);
-      return notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n);
-    });
+    }
+    delete stickyDragStart.current[id];
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n));
+  }
+
+  function handleMoveStickyNote(id: string, newX: number, newY: number) {
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n));
   }
 
   function handleEditSticky(id: string, newContent: string) {
@@ -1150,7 +1160,9 @@ const InfiniteCanvas: React.FC = () => {
             )
           }
           onDoneEdit={handleDoneEdit}
+          onStartMove={handleStartStickyMove}
           onMove={handleMoveStickyNote}
+          onDoneMove={handleEndStickyMove}
           onResize={handleResizeSticky}
           onDelete={handleDeleteStickyNote}
         />
