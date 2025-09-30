@@ -31,10 +31,10 @@ function createWindow() {
   });
 
   // DEV ONLY
-  win.loadURL('http://localhost:3000');
+  // win.loadURL('http://localhost:3000');
   
   // PRODUCTION ONLY
-  // win.loadFile(path.join(app.getAppPath(), 'build', 'index.html'));
+  win.loadFile(path.join(app.getAppPath(), 'build', 'index.html'));
 
   win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('Window failed to load:', errorDescription);
