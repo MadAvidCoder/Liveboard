@@ -480,11 +480,12 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
             position: "fixed",
             top: `${stickySubToolbarPos.top}px`,
             left: `${stickySubToolbarPos.left}px`,
-            transform: "translateX(-50%)"
+            transform: "translateX(-50%)",
+            padding: "12px 6px",
           }}
         >
-          <div className="sticky-colors" style={{display:"flex",gap:"8px",padding:"8px 8px"}}>
-            {STICKY_COLORS.map((color) => (
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            {STICKY_COLORS.slice(0, 3).map((color) => (
               <button
                 key={color}
                 className="color-btn"
@@ -492,11 +493,33 @@ const Toolbar = ({ activeTool, setTool, penColor, setPenColor, penThickness, set
                   background: color,
                   border: "2px solid " + (color === stickyColor ? "#333" : "#fff"),
                   borderRadius: "50%",
-                  width: 20,
-                  height: 20,
+                  width: 26,
+                  height: 26,
                   cursor: "pointer",
-                  boxShadow: color === stickyColor ? "0 0 4px #888" : "none"
+                  boxShadow: color === stickyColor ? "0 0 5px #888" : "none",
+                  transition: "box-shadow 0.15s, border 0.13s",
                 }}
+                aria-label={`Sticky color ${color}`}
+                onClick={() => setStickyColor(color)}
+              />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+            {STICKY_COLORS.slice(3, 6).map((color) => (
+              <button
+                key={color}
+                className="color-btn"
+                style={{
+                  background: color,
+                  border: "2px solid " + (color === stickyColor ? "#333" : "#fff"),
+                  borderRadius: "50%",
+                  width: 26,
+                  height: 26,
+                  cursor: "pointer",
+                  boxShadow: color === stickyColor ? "0 0 5px #888" : "none",
+                  transition: "box-shadow 0.15s, border 0.13s",
+                }}
+                aria-label={`Sticky color ${color}`}
                 onClick={() => setStickyColor(color)}
               />
             ))}

@@ -45,7 +45,8 @@
 .pen-subtoolbar,
 .shape-subtoolbar,
 .text-subtoolbar,
-.eraser-subtoolbar {
+.eraser-subtoolbar,
+.sticky-subtoolbar {
   position: fixed;
   background: var(--surface-glass);
   backdrop-filter: blur(12px) saturate(160%);
