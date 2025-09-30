@@ -19,8 +19,8 @@ interface StickyNoteProps {
   stageScale: number;
   stagePos: { x: number; y: number };
   onEdit: (id: string, newContent: string) => void;
-  onStartEdit: (id: string) => void;
-  onDoneEdit: (id: string) => void;
+  onStartEdit: (id: string, initialContent: string) => void;
+  onDoneEdit: (id: string, finalEdit: string) => void;
   onStartMove: (id: string, x: number, y: number) => void;
   onMove: (id: string, newX: number, newY: number) => void;
   onDoneMove: (id: string, newX: number, newY: number) => void;
@@ -158,7 +158,9 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       }}
       onMouseDown={handleDragDown}
       tabIndex={0}
-      onDoubleClick={() => onStartEdit(id)}
+      onDoubleClick={() => {
+        onStartEdit(id, content);
+      }}
     >
       <button
         style={{
@@ -207,11 +209,11 @@ const StickyNote: React.FC<StickyNoteProps> = ({
           value={content}
           autoFocus
           onChange={e => onEdit(id, e.target.value)}
-          onBlur={() => onDoneEdit(id)}
+          onBlur={() => onDoneEdit(id, content)}
           onKeyDown={e => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              onDoneEdit(id);
+              onDoneEdit(id, content);
             }
           }}
           style={{

@@ -100,6 +100,7 @@ const InfiniteCanvas: React.FC = () => {
 
   const [stickyNotes, setStickyNotes] = useState<StickyNoteType[]>([]);
   const stickyDragStart = useRef<{ [id: string]: { x: number, y: number } }>({});
+  const stickyEditStart = useRef<{ [id: string]: string }>({});
 
   type UndoAction =
   | { type: "draw" }
@@ -186,23 +187,27 @@ const InfiniteCanvas: React.FC = () => {
   }
 
   function handleEditSticky(id: string, newContent: string) {
-    setStickyNotes(notes => {
-      const sticky = notes.find(n => n.id === id);
-      if (sticky && sticky.content !== newContent) setUndoBuffer(undo => [
-        ...undo,
-        { type: "editSticky", id, from: sticky.content, to: newContent }
-      ]);
-      setRedoBuffer([]);
-      return notes.map(n => n.id === id ? { ...n, content: newContent } : n);
-    });
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: newContent } : n));
   }
 
-  function handleDoneEdit(id: string) {
+  function handleStartEditSticky(id: string, initialContent: string) {
     setStickyNotes(notes =>
-      notes.map(n =>
-        n.id === id ? { ...n, isEditing: false } : n
-      )
+      notes.map(n => n.id === id ? { ...n, isEditing: true } : n)
     );
+    stickyEditStart.current[id] = initialContent;
+  }
+
+  function handleDoneEdit(id: string, finalContent: string) {
+    const initial = stickyEditStart.current[id];
+    if (initial !== undefined && initial !== finalContent) {
+      setUndoBuffer(undo => [
+        ...undo,
+        { type: "editSticky", id, from: initial, to: finalContent }
+      ]);
+      setRedoBuffer([]);
+    }
+    delete stickyEditStart.current[id];
+    setStickyNotes(notes => notes.map(n => n.id === id ? { ...n, content: finalContent, isEditing: false } : n));
   }
 
   useEffect(() => {
@@ -1155,11 +1160,7 @@ const InfiniteCanvas: React.FC = () => {
           stageScale={stageScale}
           stagePos={stagePos}
           onEdit={handleEditSticky}
-          onStartEdit={id =>
-            setStickyNotes(notes =>
-              notes.map(n => n.id === id ? { ...n, isEditing: true } : n)
-            )
-          }
+          onStartEdit={handleStartEditSticky}
           onDoneEdit={handleDoneEdit}
           onStartMove={handleStartStickyMove}
           onMove={handleMoveStickyNote}
