@@ -109,7 +109,8 @@ const InfiniteCanvas: React.FC = () => {
   | { type: "addSticky"; sticky: StickyNoteType }
   | { type: "editSticky"; id: string; from: string; to: string }
   | { type: "removeSticky"; sticky: StickyNoteType }
-  | { type: "moveSticky"; id: string; from: { x: number, y: number }, to: { x: number, y: number } };
+  | { type: "moveSticky"; id: string; from: { x: number, y: number }, to: { x: number, y: number } }
+  | { type: "resizeSticky"; id: string; from: { width: number, height: number }, to: { width: number, height: number } };
 
   const [undoneLines, setUndoneLines] = useState<Shape[]>([]);
   const [undoBuffer, setUndoBuffer] = useState<UndoAction[]>([]);
@@ -144,6 +145,47 @@ const InfiniteCanvas: React.FC = () => {
 
   const [autosaveLoaded, setAutosaveLoaded] = useState(false);
   const [themeLoaded, setThemeLoaded] = useState(false);
+
+  function handleAddStickyNote(x: number, y: number) {
+    const id = crypto.randomUUID();
+    const newSticky: StickyNoteType = {
+      id,
+      x,
+      y,
+      width: 220,
+      height: 160,
+      color: "#ffe066",
+      content: "",
+      isEditing: true,
+    };
+    setStickyNotes(notes => [...notes, newSticky]);
+    setUndoBuffer(undo => [...undo, { type: "addSticky", sticky: newSticky }]);
+    setRedoBuffer([]);
+  }
+
+  function handleMoveStickyNote(id: string, newX: number, newY: number) {
+    setStickyNotes(notes => {
+      const sticky = notes.find(n => n.id === id);
+      if (sticky) setUndoBuffer(undo => [
+        ...undo,
+        { type: "moveSticky", id, from: { x: sticky.x, y: sticky.y }, to: { x: newX, y: newY } }
+      ]);
+      setRedoBuffer([]);
+      return notes.map(n => n.id === id ? { ...n, x: newX, y: newY } : n);
+    });
+  }
+
+  function handleEditSticky(id: string, newContent: string) {
+    setStickyNotes(notes => {
+      const sticky = notes.find(n => n.id === id);
+      if (sticky && sticky.content !== newContent) setUndoBuffer(undo => [
+        ...undo,
+        { type: "editSticky", id, from: sticky.content, to: newContent }
+      ]);
+      setRedoBuffer([]);
+      return notes.map(n => n.id === id ? { ...n, content: newContent } : n);
+    });
+  }
 
   function handleDoneEdit(id: string) {
     setStickyNotes(notes =>
@@ -202,7 +244,12 @@ const InfiniteCanvas: React.FC = () => {
   };
 
   function handleDeleteStickyNote(id: string) {
-    setStickyNotes(notes => notes.filter(n => n.id !== id));
+    setStickyNotes(notes => {
+      const sticky = notes.find(n => n.id === id);
+      if (sticky) setUndoBuffer(undo => [...undo, { type: "removeSticky", sticky }]);
+      setRedoBuffer([]);
+      return notes.filter(n => n.id !== id);
+    });
   }
 
   const handleStageStickyMouseDown = (e: any) => {
@@ -214,28 +261,20 @@ const InfiniteCanvas: React.FC = () => {
     if (!pointer) return;
     const x = (pointer.x - stagePos.x) / stageScale;
     const y = (pointer.y - stagePos.y) / stageScale;
-    const id = crypto.randomUUID();
-    setStickyNotes(notes => [
-      ...notes,
-      {
-        id,
-        x,
-        y,
-        width: 220,
-        height: 160,
-        color: "#ffe066",
-        content: "",
-        isEditing: true,
-      },
-    ]);
+    
+    handleAddStickyNote(x, y);
   };
 
   function handleResizeSticky(id: string, newWidth: number, newHeight: number) {
-    setStickyNotes(notes =>
-      notes.map(n =>
-        n.id === id ? { ...n, width: newWidth, height: newHeight } : n
-      )
-    );
+    setStickyNotes(notes => {
+      const sticky = notes.find(n => n.id === id);
+      if (sticky) setUndoBuffer(undo => [
+        ...undo,
+        { type: "resizeSticky", id, from: { width: sticky.width, height: sticky.height }, to: { width: newWidth, height: newHeight } }
+      ]);
+      setRedoBuffer([]);
+      return notes.map(n => n.id === id ? { ...n, width: newWidth, height: newHeight } : n);
+    });
   }
 
   const handleStageTextMouseDown = (e: any) => {
@@ -450,6 +489,32 @@ const InfiniteCanvas: React.FC = () => {
       case "removeText":
         setTextboxes(tbs => [...tbs, action.textbox]);
         setRedoBuffer(rb => [...rb, action]);
+        break
+      case "addSticky":
+        setStickyNotes(notes => notes.filter(n => n.id !== action.sticky.id));
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "removeSticky":
+        setStickyNotes(notes => [...notes, action.sticky]);
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "moveSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, x: action.from.x, y: action.from.y } : n
+        ));
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "resizeSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, width: action.from.width, height: action.from.height } : n
+        ));
+        setRedoBuffer(redos => [...redos, action]);
+        break;
+      case "editSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, content: action.from } : n
+        ));
+        setRedoBuffer(redos => [...redos, action]);
         break;
     }
   };
@@ -493,6 +558,32 @@ const InfiniteCanvas: React.FC = () => {
           return tbs.filter(tb => tb.id !== action.textbox.id);
         });
         setUndoBuffer(ub => [...ub, action]);
+        break;
+      case "addSticky":
+        setStickyNotes(notes => [...notes, action.sticky]);
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "removeSticky":
+        setStickyNotes(notes => notes.filter(n => n.id !== action.sticky.id));
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "moveSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, x: action.to.x, y: action.to.y } : n
+        ));
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "resizeSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, width: action.to.width, height: action.to.height } : n
+        ));
+        setUndoBuffer(undos => [...undos, action]);
+        break;
+      case "editSticky":
+        setStickyNotes(notes => notes.map(n =>
+          n.id === action.id ? { ...n, content: action.to } : n
+        ));
+        setUndoBuffer(undos => [...undos, action]);
         break;
     }
   };
@@ -1052,22 +1143,14 @@ const InfiniteCanvas: React.FC = () => {
           {...note}
           stageScale={stageScale}
           stagePos={stagePos}
-          onEdit={(id, newContent) =>
-            setStickyNotes(notes =>
-              notes.map(n => n.id === id ? { ...n, content: newContent } : n)
-            )
-          }
+          onEdit={handleEditSticky}
           onStartEdit={id =>
             setStickyNotes(notes =>
               notes.map(n => n.id === id ? { ...n, isEditing: true } : n)
             )
           }
           onDoneEdit={handleDoneEdit}
-          onMove={(id, x, y) =>
-            setStickyNotes(notes =>
-              notes.map(n => n.id === id ? { ...n, x, y } : n)
-            )
-          }
+          onMove={handleMoveStickyNote}
           onResize={handleResizeSticky}
           onDelete={handleDeleteStickyNote}
         />
