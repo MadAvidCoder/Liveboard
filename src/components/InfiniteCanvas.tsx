@@ -426,6 +426,7 @@ const InfiniteCanvas: React.FC = () => {
       if (e.key === 'e') setActiveTool('eraser');
       if (e.key === 't') setActiveTool('text');
       if (e.key === 's') setActiveTool('shape');
+      if (e.key === 'y') setActiveTool('sticky');
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
