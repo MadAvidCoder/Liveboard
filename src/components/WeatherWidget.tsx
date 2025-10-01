@@ -64,8 +64,9 @@ const WeatherWidget: React.FC = () => {
       boxShadow: "0 2px 8px #0002",
       fontSize: 16,
       display: "flex",
-      alignItems: "center"
-    }}>
+      alignItems: "center",
+    }}
+    className="floating-widget">
       {iconUrl && (
         <img
           src={iconUrl}
