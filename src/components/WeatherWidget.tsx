@@ -5,36 +5,42 @@ const WEATHER_API_KEY = "a240431b6777492fa5b112605250110";
 const WeatherWidget: React.FC = () => {
   const [weather, setWeather] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<string>("");
+
+  function fetchWeather(loc: string) {
+    fetch(
+      `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(loc)}`
+    )
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) {
+          setError(data.error.message || "Weather error");
+          setWeather(null);
+        } else {
+          setWeather(data);
+          setLocation(data.location?.name || loc);
+          setError(null);
+        }
+      })
+      .catch(err => {
+        setError(String(err));
+        setWeather(null);
+      });
+  }
 
   useEffect(() => {
-    function fetchWeather(loc: string) {
-      fetch(
-        `https://api.weatherapi.com/v1/current.json?key=${WEATHER_API_KEY}&q=${encodeURIComponent(loc)}`
-      )
-        .then(res => res.json())
-        .then(data => {
-          if (data.error) {
-            setError(data.error.message || "Weather error");
-            setWeather(null);
-          } else {
-            setWeather(data);
-            setError(null);
-          }
-        })
-        .catch(err => {
-          setError(String(err));
-          setWeather(null);
-        });
-    }
-
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        pos => fetchWeather(`${pos.coords.latitude},${pos.coords.longitude}`),
-        () => fetchWeather("London")
-      );
-    } else {
-      fetchWeather("London");
-    }
+    fetch("https://ipapi.co/json/")
+      .then(res => res.json())
+      .then(ipData => {
+        if (ipData.city) {
+          fetchWeather(ipData.city);
+        } else if (ipData.latitude && ipData.longitude) {
+          fetchWeather(`${ipData.latitude},${ipData.longitude}`);
+        } else {
+          fetchWeather("Melbourne");
+        }
+      })
+      .catch(() => fetchWeather("Melbourne"));
   }, []);
 
   if (error) return <div style={{padding: 8, color: 'red'}}>Weather error: {error}</div>;
@@ -48,7 +54,7 @@ const WeatherWidget: React.FC = () => {
       : "";
   const temp = weather.current?.temp_c;
   const desc = weather.current?.condition?.text || "";
-  const location = weather.location?.name || "";
+  const city = location || weather.location?.name || "";
 
   return (
     <div style={{
@@ -70,7 +76,7 @@ const WeatherWidget: React.FC = () => {
       <span style={{fontWeight: 600, marginRight: 8}}>
         {typeof temp === "number" ? Math.round(temp) + "°C" : "--"}
       </span>
-      <span style={{color: "#555"}}>{location}</span>
+      <span style={{color: "#555"}}>{city}</span>
     </div>
   );
 };
