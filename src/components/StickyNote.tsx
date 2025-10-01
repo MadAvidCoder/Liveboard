@@ -193,7 +193,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       onMouseDown={handleDragDown}
       tabIndex={0}
       onClick={e => {
-        e.stopPropagation(); 
+        e.stopPropagation();
         if (!locked && !isEditingBody && !isEditingTitle) onStartEdit(id, content);
       }}
     >
