@@ -12,6 +12,7 @@
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/c8995cdf063201d72b8311db14c9bc15c2e4c0ed_image.png width=400>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=400>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/283f296f695d671b8344c736d316e37746f34ac9_image.png width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3cfd0760cc96cfe4fd43c636ab5c5038db2651ed_image.png width=400>
 </div>
 <div>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/61393ba6bf243e9aba30b302e1a695a732a8b6be_image.png width=220>
@@ -26,10 +27,12 @@ Liveboard transforms your desktop into an infinite creative canvas, letting you 
 - **Infinitely Large Canvas** - Just drag it around or zoom for more space
 - **Dark Mode** - Switch the UI between light and dark mode, and your drawings will update to remain visible 
 - **Multiple Colours and Pen thicknesses** - Keep your notes and drawings visually interesting
+- **Sticky Notes** - Use markdown-enabled sticky notes, to keep track of important information
+- **Autosave** - Never lose your work, as everything is automatically saved to your computer, and restored on restart
 - **Lives on your desktop** - Just minimise your window and get straight to the whiteboard
 - **Undo and Redo** - Fix up any mistakes by simply undoing your last action
 - **Pen Eraser** - Erase your pen marks simply by switching tools
-- **Shape Templates** - Use the shape tool to draw perfect shapes. Hold shift to snap to perfect circles/squares
+- **Shapes** - Use the shape tool to draw perfect shapes. Hold shift to snap to perfect circles/squares
 - **Text** - Use the text tool to write readable text on your whiteboard
 - **Fully Open-Source** - Fork the repo and implement your own new features
 
@@ -42,7 +45,7 @@ If the app doesn't auto-start, manually open it, and it should appear on your de
 ## Usage
 There a number of different tools within Liveboard. The pen tool is used for drawing ink on the whiteboard, and the eraser for erasing it. The shape tool can be used to draw perfect shapes, saving you from drawing them. The text tool enables readable text to be easily created, rather than hand-writing it. Undo and Redo work across all actions and tools. To pan hold `Ctrl` or `Alt` and drag around. Hold shift while using the shape tool to snap ellipses and rectangles to circles and squares. Liveboard also has full touch support - use one finger to draw, and two fingers to zoom or drag.
 
-Use the sun/moon icon in the top right corner to easily switch the UI between light and dark mode. All drawings (and this theme) should persist betewen restarts, so if you want a fresh slate, just clicker the eraser tool, and then select `Clear All` to get a blank whiteboard!
+Use the sun/moon icon in the top right corner to easily switch the UI between light and dark mode. All drawings, notes, shapes and text (and your theme preference!) should persist betewen restarts, so if you want a fresh slate, just clicker the eraser tool, and then select `Clear All` to get a blank whiteboard!
 
 **Note:** Due to security limitations set by the OS, if you use a minimise shorcut (e.g. `Win + D` or a three-finger swipe), then Liveboard will likely be hidden. You can simply use the tray icon to show it again. 
 
@@ -67,6 +70,7 @@ npm run package # Package an electron installer (targets your current OS)
 - **Electron** for desktop app framework
 - **Electron Builder** for packaging
 - **Konva** for the infinite canvas framework
+- **React Markdown** for markdown sticky notes
 - **GitHub Actions** for building packages for other target OSs
 
 ## License
