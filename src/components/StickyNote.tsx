@@ -193,6 +193,7 @@ const StickyNote: React.FC<StickyNoteProps> = ({
       onMouseDown={handleDragDown}
       tabIndex={0}
       onClick={e => {
+        e.stopPropagation(); 
         if (!locked && !isEditingBody && !isEditingTitle) onStartEdit(id, content);
       }}
     >
@@ -348,21 +349,31 @@ const StickyNote: React.FC<StickyNoteProps> = ({
         />
       ) : (
         <div
-          style={{ marginTop: "18px", cursor: locked ? "default" : "text" }}
+          style={{
+            marginTop: "18px",
+            cursor: locked ? "default" : "text",
+            pointerEvents: "auto",
+          }}
+          onClick={e => {
+            e.stopPropagation(); 
+            if (!locked && !isEditingBody && !isEditingTitle) onStartEdit(id, content);
+          }}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            components={{
-              h1: ({node, ...props}) => <h1 style={{fontSize:"1.1em",margin:"0.5em 0"}} {...props} />,
-              h2: ({node, ...props}) => <h2 style={{fontSize:"0.95em",margin:"0.4em 0"}} {...props} />,
-              h3: ({node, ...props}) => <h3 style={{fontSize:"0.875em",margin:"0.3em 0"}} {...props} />,
-              p: ({node, ...props}) => <p style={{fontSize:"0.875em", margin:"0.3em 0"}} {...props} />,
-              ul: ({node, ...props}) => <ul style={{paddingLeft:"0.8em"}} {...props} />,
-              li: ({node, ...props}) => <li style={{fontSize: "0.875em", marginBottom:"0.33em"}} {...props} />,
-              code: ({node, ...props}) => <code style={{background:"#fff6b0",padding:"2px 4px",borderRadius:"5px", fontSize:"0.92em"}} {...props} />,
-          }}>
-            {content}
-          </ReactMarkdown>
+          <div style={{ pointerEvents: "none" }}>
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h1: ({node, ...props}) => <h1 style={{fontSize:"1.1em",margin:"0.5em 0"}} {...props} />,
+                h2: ({node, ...props}) => <h2 style={{fontSize:"0.95em",margin:"0.4em 0"}} {...props} />,
+                h3: ({node, ...props}) => <h3 style={{fontSize:"0.875em",margin:"0.3em 0"}} {...props} />,
+                p: ({node, ...props}) => <p style={{fontSize:"0.875em", margin:"0.3em 0"}} {...props} />,
+                ul: ({node, ...props}) => <ul style={{paddingLeft:"0.8em"}} {...props} />,
+                li: ({node, ...props}) => <li style={{fontSize: "0.875em", marginBottom:"0.33em"}} {...props} />,
+                code: ({node, ...props}) => <code style={{background:"#fff6b0",padding:"2px 4px",borderRadius:"5px", fontSize:"0.92em"}} {...props} />,
+            }}>
+              {content}
+            </ReactMarkdown>
+          </div>
         </div>
       )}
     </div>
