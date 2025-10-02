@@ -6,6 +6,7 @@
 ![Commits](https://img.shields.io/github/commit-activity/t/madavidcoder/liveboard)
 ![Last Commit](https://img.shields.io/github/last-commit/madavidcoder/liveboard)
 ![Build Status](https://img.shields.io/github/actions/workflow/status/madavidcoder/liveboard/release.yml)
+![Releases](https://img.shields.io/github/v/release/madavidcoder/liveboard)
 
 <div>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/d9a863f15245995c9c7ca94535221e483ec23b2c_screenshot_2025-09-21_203311.png width=400>
@@ -13,6 +14,7 @@
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=400>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/283f296f695d671b8344c736d316e37746f34ac9_image.png width=400>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3cfd0760cc96cfe4fd43c636ab5c5038db2651ed_image.png width=400>
+<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/84da78f9234e593a946bc5804cea0a2a8f5c6aa4_image.png width=400>
 </div>
 <div>
 <img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/61393ba6bf243e9aba30b302e1a695a732a8b6be_image.png width=220>
@@ -31,6 +33,7 @@ Liveboard transforms your desktop into an infinite creative canvas, letting you 
 - **Autosave** - Never lose your work, as everything is automatically saved to your computer, and restored on restart
 - **Lives on your desktop** - Just minimise your window and get straight to the whiteboard
 - **Widgets** - Keep track of time, weather, and your productivity with the clock, weather, and pomodoro widgets
+- **Location-based Weather** - Get accurate weather information for your approximate current location, detected via your IP address
 - **Undo and Redo** - Fix up any mistakes by simply undoing your last action
 - **Pen Eraser** - Erase your pen marks simply by switching tools
 - **Shapes** - Use the shape tool to draw perfect shapes. Hold shift to snap to perfect circles/squares
@@ -73,6 +76,9 @@ npm run package # Package an electron installer (targets your current OS)
 - **Konva** for the infinite canvas framework
 - **React Markdown** for markdown sticky notes
 - **GitHub Actions** for building packages for other target OSs
+- **WeatherAPI** for real-time weather data
+- **React Icons** for icons
+- **ipapi** for IP-based location detection
 
 ## License
 Liveboard is licensed under the [MIT License](LICENSE).
