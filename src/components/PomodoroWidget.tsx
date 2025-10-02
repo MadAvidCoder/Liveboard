@@ -79,15 +79,11 @@ const PomodoroWidget: React.FC = () => {
     <div
       className="floating-widget"
       style={{
-        background: "rgba(255,255,255,0.8)",
-        borderRadius: 14,
         padding: "18px 22px",
-        boxShadow: "0 2px 16px 0 #0001",
         fontSize: 16,
         minWidth: 128,
         textAlign: "center",
         userSelect: "none",
-        backdropFilter: "blur(2px)",
       }}
     >
       <audio ref={audioRef} src={CHIME_URL} preload="auto" />
@@ -98,7 +94,7 @@ const PomodoroWidget: React.FC = () => {
               cx={SIZE / 2}
               cy={SIZE / 2}
               r={RADIUS}
-              stroke="#e6e9ef"
+              stroke="var(--border)"
               strokeWidth={STROKE}
               fill="none"
             />
@@ -125,10 +121,9 @@ const PomodoroWidget: React.FC = () => {
             fontFamily: "monospace",
             fontSize: 26,
             fontWeight: 600,
-            color: "#23233b",
             pointerEvents: "none",
             letterSpacing: 1,
-            textShadow: "0 1px 3px #fff8",
+            textShadow: "0 1px 3px var(--surface)",
           }}>
             {pad(minutes)}:{pad(seconds)}
           </div>

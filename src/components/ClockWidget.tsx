@@ -34,11 +34,11 @@ const ClockWidget: React.FC = () => {
       <span style={{paddingTop: 4, fontSize: 21, fontWeight: 600, letterSpacing: 1}}>
         {hours}:{minutes}:{seconds}
       </span>
-      <span style={{paddingTop: 3, paddingBottom: 3, fontSize: 14, color: "#4A4A4A", marginTop: 1}}>
+      <span style={{paddingTop: 3, paddingBottom: 3, fontSize: 14, color: "var(--on-surface-muted)", marginTop: 1}}>
         {date}
       </span>
     </div>
   );
 };
-
+// 4A4A4A
 export default ClockWidget;
