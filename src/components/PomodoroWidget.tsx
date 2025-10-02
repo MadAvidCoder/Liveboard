@@ -72,8 +72,8 @@ const PomodoroWidget: React.FC = () => {
   const minutes = Math.floor(secondsLeft / 60);
   const seconds = secondsLeft % 60;
   const progressColor = onBreak
-    ? "var(--primary, #0db57b)"
-    : "var(--primary-accent, #4f8cff)";
+    ? "#0db57b"
+    : "#4f8cff";
 
   return (
     <div
@@ -137,7 +137,7 @@ const PomodoroWidget: React.FC = () => {
           marginTop: 2,
           fontWeight: 600,
           fontSize: 17,
-          color: onBreak ? "var(--primary, #0db57b)" : "var(--primary-accent, #4f8cff)"
+          color: onBreak ? "#0db57b" : "#4f8cff"
         }}>
           {onBreak ? "Break" : "Work"}
         </div>
