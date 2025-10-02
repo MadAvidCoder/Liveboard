@@ -58,10 +58,7 @@ const WeatherWidget: React.FC = () => {
 
   return (
     <div style={{
-      background: "rgba(255,255,255,0.8)",
-      borderRadius: 10,
       padding: "8px 16px",
-      boxShadow: "0 2px 8px #0002",
       fontSize: 16,
       display: "flex",
       alignItems: "center",

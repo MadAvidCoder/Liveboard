@@ -5,7 +5,48 @@
   filter: blur(0);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
+  border: 1.5px solid var(--border);
   transition: box-shadow var(--transition), background var(--transition);
-  z-index: 11;
+  z-index: 2000;
   isolation: isolate;
+}
+
+.pomodoro-btn {
+  background: none;
+  border: none;
+  outline: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3em;
+  color: var(--on-surface);
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    box-shadow var(--transition),
+    color var(--transition),
+    border var(--transition);
+  position: relative;
+  font-family: inherit;
+  width: 30px;
+  height: 30px;
+}
+
+.pomodoro-btn:focus-visible,
+.pomodoro-btn:hover {
+  background: var(--primary-accent);
+  color: var(--primary);
+  box-shadow: 0 2px 8px #4f8cff33;
+}
+
+.pomodoro-btn:active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.pomodoro-btn.selected {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 12px #4f8cff44;
 }

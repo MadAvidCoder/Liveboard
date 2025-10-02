@@ -18,14 +18,11 @@ const ClockWidget: React.FC = () => {
   return (
     <div className="floating-widget"
       style={{
-        background: "rgba(255,255,255,0.75)",
         borderRadius: 8,
         padding: "6px 14px 2px 10px",
         fontFamily: "monospace",
         fontSize: 20,
-        boxShadow: "0 1px 6px #0002",
         userSelect: "none",
-        color: "#333",
         minWidth: 110,
         textAlign: "center",
         display: "flex",
