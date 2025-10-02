@@ -30,6 +30,7 @@ Liveboard transforms your desktop into an infinite creative canvas, letting you 
 - **Sticky Notes** - Use markdown-enabled sticky notes, to keep track of important information
 - **Autosave** - Never lose your work, as everything is automatically saved to your computer, and restored on restart
 - **Lives on your desktop** - Just minimise your window and get straight to the whiteboard
+- **Widgets** - Keep track of time, weather, and your productivity with the clock, weather, and pomodoro widgets
 - **Undo and Redo** - Fix up any mistakes by simply undoing your last action
 - **Pen Eraser** - Erase your pen marks simply by switching tools
 - **Shapes** - Use the shape tool to draw perfect shapes. Hold shift to snap to perfect circles/squares
