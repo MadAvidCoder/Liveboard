@@ -5,14 +5,19 @@ const AutoLaunch = require('auto-launch');
 let tray = null;
 let win = null;
 
+function alignWindowToWorkArea() {
+  const { width, height, x, y } = screen.getPrimaryDisplay().workArea;
+  win.setBounds({ x, y, width, height }, false);
+}
+
 function createWindow() {
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { width, height, x, y } = screen.getPrimaryDisplay().workArea;
 
   win = new BrowserWindow({
     width,
     height,
-    x: 0,
-    y: 0,
+    x,
+    y,
     frame: false,
     transparent: false,
     kiosk: true,
@@ -41,6 +46,7 @@ function createWindow() {
   });
 
   win.once('ready-to-show', () => {
+    alignWindowToWorkArea();
     win.show();
   });
 
@@ -61,13 +67,24 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
+  const attemptAlignWindow = () => {
+    if (win) alignWindowToWorkArea()
+  }
+
+  screen.on('display-metrics-changed', attemptAlignWindow);
+  screen.on('display-added', attemptAlignWindow);
+  screen.on('display-removed', attemptAlignWindow);
+
   tray = new Tray(path.join(__dirname, '../tray_icon.png'));
 
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Show Liveboard',
       click: () => {
-        if (win) win.show();
+        if (win) {
+          alignWindowToWorkArea();
+          win.show();
+        }
       }
     },
     {
@@ -89,7 +106,10 @@ app.whenReady().then(() => {
   tray.setContextMenu(contextMenu);
 
   tray.on('double-click', () => {
-    if (win) win.show();
+    if (win) {
+      alignWindowToWorkArea();
+      win.show();
+    }
   });
 
   tray.on('click', () => {
