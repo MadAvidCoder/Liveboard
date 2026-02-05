@@ -5,7 +5,7 @@ import { FaArrowsRotate } from "react-icons/fa6";
 const WORK_MINUTES = 25;
 const BREAK_MINUTES = 5;
 
-const CHIME_URL = "https://hc-cdn.hel1.your-objectstorage.com/s/v3/bd5677662ec116d25a76fcbd725343aa4e7bd507_notification-bell-sound-376888_audio.mp4";
+const CHIME_URL = "https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/bd5677662ec116d25a76fcbd725343aa4e7bd507_notification-bell-sound-376888_audio.mp4";
 
 function pad(n: number) {
   return n.toString().padStart(2, "0");
