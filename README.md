@@ -9,17 +9,17 @@
 ![Releases](https://img.shields.io/github/v/release/madavidcoder/liveboard)
 
 <div>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/d9a863f15245995c9c7ca94535221e483ec23b2c_screenshot_2025-09-21_203311.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/c8995cdf063201d72b8311db14c9bc15c2e4c0ed_image.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/283f296f695d671b8344c736d316e37746f34ac9_image.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3cfd0760cc96cfe4fd43c636ab5c5038db2651ed_image.png width=400>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/84da78f9234e593a946bc5804cea0a2a8f5c6aa4_image.png width=400>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/d9a863f15245995c9c7ca94535221e483ec23b2c_screenshot_2025-09-21_203311.png width=400>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/c8995cdf063201d72b8311db14c9bc15c2e4c0ed_image.png width=400>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/884feae879bc1d8b02acc0b998564d3c40e6aaa3_image.png width=400>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/283f296f695d671b8344c736d316e37746f34ac9_image.png width=400>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3cfd0760cc96cfe4fd43c636ab5c5038db2651ed_image.png width=400>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/84da78f9234e593a946bc5804cea0a2a8f5c6aa4_image.png width=400>
 </div>
 <div>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/61393ba6bf243e9aba30b302e1a695a732a8b6be_image.png width=220>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3d27ae03b2d68ba54beaad3489c4932cec40fdd5_image.png width=150>
-<img src=https://hc-cdn.hel1.your-objectstorage.com/s/v3/cca4ab53c69b309b554598bbf91b8cccd4317f83_image.png width=250>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/61393ba6bf243e9aba30b302e1a695a732a8b6be_image.png width=220>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/3d27ae03b2d68ba54beaad3489c4932cec40fdd5_image.png width=150>
+<img src=https://cdn.hackclub.com/rescue?url=https://hc-cdn.hel1.your-objectstorage.com/s/v3/cca4ab53c69b309b554598bbf91b8cccd4317f83_image.png width=250>
 </div>
 
 ### Download it [here](https://github.com/MadAvidCoder/Liveboard/releases)!
